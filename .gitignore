@@ -1,0 +1,31 @@
+## Build outputs
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.pdb
+
+## Logs
+*.log
+
+## Runtime output (may contain sensitive error details)
+run-error.txt
+run-output.txt
+
+## Screenshots (may contain UI with sensitive data)
+*.png
+
+## Temp tooling directories
+.tmp-playwright/
+
+## Secrets and generated config
+appsettings*.json
+secrets*.json
+settings.json
+
+## OpenCode / AI tool artifacts
+.opencode/
+.sisyphus/
+AGENTS.md
