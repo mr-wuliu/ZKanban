@@ -49,6 +49,22 @@ function Get-AppExePath {
     return $null
 }
 
+function Test-SourceChanged {
+    $exePath = Get-AppExePath
+    if (-not $exePath -or -not (Test-Path $exePath)) {
+        return $true
+    }
+
+    $exeTime = (Get-Item $exePath).LastWriteTimeUtc
+    $srcFiles = Get-ChildItem -Path $ProjectDir -Include *.cs, *.xaml, *.csproj, *.slnx -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
+
+    if (-not $srcFiles) { return $false }
+
+    $newestSrc = ($srcFiles | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1).LastWriteTimeUtc
+    return $newestSrc -gt $exeTime
+}
+
 function Start-App {
     $proc = Get-AppProcess
     if ($proc) {
@@ -56,10 +72,10 @@ function Start-App {
         return
     }
 
-    # Ensure the project is built
+    # Rebuild if source has changed or exe is missing
     $exePath = Get-AppExePath
-    if (-not $exePath -or -not (Test-Path $exePath)) {
-        Write-Host "[$ProjectName] Building..." -ForegroundColor Cyan
+    if (Test-SourceChanged) {
+        Write-Host "[$ProjectName] Source changed, rebuilding..." -ForegroundColor Cyan
         dotnet build $ProjectDir --configuration Debug -v quiet 2>$null
         $exePath = Get-AppExePath
     }
