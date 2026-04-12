@@ -15,8 +15,8 @@ public partial class MainWindow : Window
 {
     private const double ExpandedWidth = 450;
     private const double ExpandedHeight = 274;
-    private const double ChartHeight = 120;
-    private const double ChartTop = 4;
+    private const double ChartHeight = 124;
+    private const double ChartTop = 0;
 
     private static readonly string[] Palette = ["#67A6FF", "#FF9D4B", "#60E6B2", "#D38FFF", "#FFD166", "#7DD3FC"];
 
@@ -39,6 +39,8 @@ public partial class MainWindow : Window
     private bool _isRefreshing;
     private bool _isChartMode = true;
     private bool _hasPendingRefresh;
+    private double _chartWidth = 370;
+    private DateTime? _chartDataEnd;
 
     public MainWindow()
     {
@@ -52,6 +54,7 @@ public partial class MainWindow : Window
         TrackDotsItemsControl.ItemsSource = _trackDots;
         TrackSeriesItemsControl.ItemsSource = _trackSeriesItems;
         Loaded += MainWindow_Loaded;
+        ChartCanvas.Loaded += ChartCanvas_Loaded;
         _refreshTimer.Tick += RefreshTimer_Tick;
     }
 
@@ -64,6 +67,19 @@ public partial class MainWindow : Window
         ApplyCollapsedState();
         ConfigureRefreshTimer();
         await RefreshUsageAsync();
+    }
+
+    private void ChartCanvas_Loaded(object sender, RoutedEventArgs e)
+    {
+        ChartCanvas.SizeChanged += ChartCanvas_SizeChanged;
+    }
+
+    private void ChartCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged && _chartSeries.Count > 0)
+        {
+            RenderChart();
+        }
     }
 
     private void NormalizeSelectedModels()
@@ -88,8 +104,13 @@ public partial class MainWindow : Window
 
     private void PositionWindow()
     {
+        PositionToTopRight();
+    }
+
+    private void PositionToTopRight()
+    {
         var area = SystemParameters.WorkArea;
-        Left = area.Right - Width - 16;
+        Left = area.Right - ActualWidth - 16;
         Top = area.Top + 16;
     }
 
@@ -332,10 +353,19 @@ public partial class MainWindow : Window
         _axisLabels.Clear();
         _gridLines.Clear();
 
+        var canvasWidth = ChartCanvas.ActualWidth;
+        _chartWidth = canvasWidth > ChartLayoutHelper.ChartLeft + 40
+            ? canvasWidth - ChartLayoutHelper.ChartLeft
+            : 370;
+
+        // Ensure the inner Canvas of AxisLabelsItemsControl has enough width for all labels
+        AxisLabelsItemsControl.Width = ChartLayoutHelper.ChartLeft + _chartWidth;
+
         var seriesList = GetDisplayedSeries();
         var allPoints = seriesList.SelectMany(item => item.Points).ToList();
         if (!seriesList.Any() || allPoints.Count == 0)
         {
+            _chartDataEnd = null;
             CollapsedHintTextBlock.Visibility = Visibility.Visible;
             CollapsedHintTextBlock.Text = "没有可绘制的数据";
             ChartValueTextBlock.Text = "--";
@@ -343,19 +373,21 @@ public partial class MainWindow : Window
         }
 
         CollapsedHintTextBlock.Visibility = Visibility.Collapsed;
+        _chartDataEnd = allPoints.Max(point => point.Time);
         var maxValue = Math.Max(1, allPoints.Max(point => point.Value));
+        var gridRight = ChartLayoutHelper.ChartLeft + _chartWidth;
         for (var i = 0; i < 4; i++)
         {
             var ratio = i / 3d;
             var y = ChartTop + (1 - ratio) * ChartHeight;
-            _gridLines.Add(new ChartGridLineViewModel { Top = y, Label = FormatYAxis(maxValue * ratio) });
+            _gridLines.Add(new ChartGridLineViewModel { Top = y, Right = gridRight, Label = FormatYAxis(maxValue * ratio) });
         }
 
         for (var i = 0; i < seriesList.Count; i++)
         {
             var points = new PointCollection(seriesList[i].Points.Select(point =>
                 new Point(
-                    ChartLayoutHelper.ComputePointX(point.Time, _currentRangeStart, _currentRangeEnd),
+                    ChartLayoutHelper.ComputePointX(point.Time, _currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd),
                     ChartTop + (1 - point.Value / maxValue) * ChartHeight)));
 
             _chartSeries.Add(new ChartSeriesViewModel
@@ -367,12 +399,13 @@ public partial class MainWindow : Window
             });
         }
 
-        foreach (var label in ChartLayoutHelper.BuildAxisLabels(_currentRangeStart, _currentRangeEnd))
+        foreach (var label in ChartLayoutHelper.BuildAxisLabels(_currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd))
         {
             _axisLabels.Add(new ChartAxisLabelViewModel
             {
                 Left = label.Left,
                 Text = label.Text,
+                Width = label.Width,
             });
         }
     }
@@ -381,8 +414,11 @@ public partial class MainWindow : Window
     {
         var collapsed = _settings.IsCollapsed;
 
-        // Collapsed: only show expand + gear buttons
-        ExpandButton.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        // Toggle icon: expanded → show minimize (▲), collapsed → show expand (▼)
+        ExpandButtonIcon.Data = collapsed
+            ? Geometry.Parse("M4,6 L8,2 L12,6")
+            : Geometry.Parse("M4,2 L8,6 L12,2");
+
         ModeButtonsBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         CurveSelectorButton.Visibility = collapsed || !_isChartMode ? Visibility.Collapsed : Visibility.Visible;
         RangeButtonsBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
@@ -422,6 +458,15 @@ public partial class MainWindow : Window
     private static SolidColorBrush CreateBrush(string hex)
     {
         return (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
+    }
+
+    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    {
+        base.OnRenderSizeChanged(sizeInfo);
+        if (sizeInfo.WidthChanged)
+        {
+            Left += sizeInfo.PreviousSize.Width - sizeInfo.NewSize.Width;
+        }
     }
 
     private static string FormatYAxis(double value)
@@ -511,7 +556,7 @@ public partial class MainWindow : Window
     {
         _settings.IsCollapsed = !_settings.IsCollapsed;
         await _settingsService.SaveAsync(_settings);
-        ApplyCollapsedState();
+        UpdatePanels();
     }
 
     private async void OpenSettingsMenuItem_Click(object sender, RoutedEventArgs e)
@@ -551,7 +596,7 @@ public partial class MainWindow : Window
         var x = pos.X;
 
         // Check if within chart area
-        if (x < ChartLayoutHelper.ChartLeft || x > ChartLayoutHelper.ChartLeft + ChartLayoutHelper.ChartWidth)
+        if (x < ChartLayoutHelper.ChartLeft || x > ChartLayoutHelper.ChartLeft + _chartWidth)
         {
             HideTrackOverlay();
             return;
@@ -563,7 +608,7 @@ public partial class MainWindow : Window
         TrackVerticalLine.Visibility = Visibility.Visible;
 
         // Convert X to time
-        var hitTime = ChartLayoutHelper.ComputeTimeFromX(x, _currentRangeStart, _currentRangeEnd);
+        var hitTime = ChartLayoutHelper.ComputeTimeFromX(x, _currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd);
 
         // Find closest point in each series
         _trackDots.Clear();
@@ -577,7 +622,7 @@ public partial class MainWindow : Window
         {
             var series = seriesList[i];
             var closest = series.Points.OrderBy(p => Math.Abs((p.Time - hitTime).TotalSeconds)).First();
-            var px = ChartLayoutHelper.ComputePointX(closest.Time, _currentRangeStart, _currentRangeEnd);
+            var px = ChartLayoutHelper.ComputePointX(closest.Time, _currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd);
             var py = ChartTop + (1 - closest.Value / maxValue) * ChartHeight;
 
             var stroke = CreateBrush(Palette[i % Palette.Length]);
@@ -595,7 +640,7 @@ public partial class MainWindow : Window
         // Position tooltip - prefer right of cursor, flip left if overflow
         var tooltipX = x + 10;
         var tooltipY = pos.Y - 10;
-        if (tooltipX + 130 > ChartLayoutHelper.ChartLeft + ChartLayoutHelper.ChartWidth)
+        if (tooltipX + 130 > ChartLayoutHelper.ChartLeft + _chartWidth)
             tooltipX = x - 140;
         Canvas.SetLeft(TrackToolTip, tooltipX);
         Canvas.SetTop(TrackToolTip, Math.Max(4, tooltipY));
