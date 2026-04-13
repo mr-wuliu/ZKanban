@@ -16,6 +16,8 @@ run-output.txt
 
 ## Screenshots (may contain UI with sensitive data)
 *.png
+!docs/*.png
+!docs/**/*.png
 
 ## Temp tooling directories
 .tmp-playwright/
