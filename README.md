@@ -11,7 +11,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-<img src="docs/screenshot-chart.png" alt="Zhipu Usage Widget Screenshot" width="480">
+<img src="docs/display.png" alt="Zhipu Usage Widget Screenshot" width="480">
 
 </div>
 
@@ -33,25 +33,19 @@
 
 ## 📸 截图
 
-### 曲线图模式
+### 桌面悬浮效果
 
-悬浮窗默认展示多模型 Token 消耗趋势曲线。鼠标悬停可查看任意时间点的精确用量：
+组件以悬浮窗形式常驻桌面右上角，实时展示用量趋势：
 
-<img src="docs/screenshot-chart.png" alt="Chart Mode" width="480">
+<img src="docs/display.png" alt="Widget on Desktop" width="480">
 
 ### 概览模式
 
-切换到概览视图，以卡片形式展示各模型用量和配额百分比：
-
-<!-- TODO: 截图 summary 模式后取消注释 -->
-<!-- <img src="docs/screenshot-summary.png" alt="Summary Mode" width="480"> -->
+切换到概览视图，以卡片形式展示各模型用量和配额百分比。
 
 ### 设置面板
 
-配置智谱账号、刷新间隔、自动登录等选项：
-
-<!-- TODO: 截图设置面板后取消注释 -->
-<!-- <img src="docs/screenshot-settings.png" alt="Settings Panel" width="320"> -->
+通过菜单栏 ⚙ 按钮打开设置，配置智谱账号、刷新间隔、自动登录等选项。
 
 ---
 
