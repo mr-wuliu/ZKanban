@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -30,7 +31,7 @@ public partial class MainWindow : Window
     private readonly BigModelAutomationService _automationService = new();
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly HashSet<string> _selectedCurveLabels = [];
-    private readonly Dictionary<string, (UsageSnapshot Snapshot, DateTimeOffset CachedAt)> _snapshotCache = [];
+    private readonly UsageHistoryService _historyService = new();
 
     private CredentialSettings _settings = CredentialSettings.CreateDefault();
     private UsageSnapshot? _currentSnapshot;
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
     private bool _hasPendingRefresh;
     private double _chartWidth = 370;
     private DateTime? _chartDataEnd;
+    private bool _historyLoaded;
 
     public MainWindow()
     {
@@ -61,6 +63,8 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _settings = await _settingsService.LoadAsync();
+        _historyService.LoadFromDisk();
+        _historyLoaded = true;
         NormalizeSelectedModels();
         PositionWindow();
         ApplyPersistedRange();
@@ -123,7 +127,7 @@ public partial class MainWindow : Window
 
     private void ApplyPersistedRange()
     {
-        var days = _settings.RangeDays is 1 or 7 or 30 ? _settings.RangeDays : 7;
+        var days = _settings.RangeDays is 1 or 7 or 30 or 60 ? _settings.RangeDays : 7;
         ApplyDatesForPreset(days);
     }
 
@@ -132,7 +136,7 @@ public partial class MainWindow : Window
         _currentRangeStart = DateTime.Today.AddDays(-(days - 1));
         _currentRangeEnd = DateTime.Today;
         _settings.RangeDays = days;
-        UpdateRangeButtons(days == 1 ? "1" : days == 30 ? "30" : "7");
+        UpdateRangeButtons(days == 1 ? "1" : days == 7 ? "7" : days == 30 ? "30" : "60");
     }
 
     private void UpdateRangeButtons(string mode)
@@ -143,11 +147,12 @@ public partial class MainWindow : Window
         WeekRangeButton.Background = mode == "7" ? CreateBrush("#1C3650") : Brushes.Transparent;
         MonthRangeButton.Foreground = mode == "30" ? Brushes.White : CreateBrush("#94A3B8");
         MonthRangeButton.Background = mode == "30" ? CreateBrush("#1C3650") : Brushes.Transparent;
+        Month60RangeButton.Foreground = mode == "60" ? Brushes.White : CreateBrush("#94A3B8");
+        Month60RangeButton.Background = mode == "60" ? CreateBrush("#1C3650") : Brushes.Transparent;
     }
 
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
     {
-        _snapshotCache.Clear();
         await RefreshUsageAsync();
     }
 
@@ -167,18 +172,50 @@ public partial class MainWindow : Window
             {
                 _hasPendingRefresh = false;
 
-                var start = _currentRangeStart;
-                var end = _currentRangeEnd;
+                var today = DateTime.Today;
+                var todayDate = DateOnly.FromDateTime(today);
+                var rangeDays = _settings.RangeDays;
 
-                var cacheKey = $"{start:yyyy-MM-dd}_{end:yyyy-MM-dd}";
-                if (_snapshotCache.TryGetValue(cacheKey, out var entry) && (DateTimeOffset.Now - entry.CachedAt).TotalMinutes < 5)
+                // Step 1: Always fetch today's data (establishes login session)
+                var todaySnapshot = await _automationService.RefreshUsageAsync(
+                    HiddenWebView, _settings, today, today, CancellationToken.None);
+
+                if (todaySnapshot.IsLoggedIn)
                 {
-                    _currentSnapshot = entry.Snapshot;
+                    // Update today's daily total in history
+                    UpdateHistoryFromSnapshot(todayDate, todaySnapshot);
+
+                    // Step 2: Backfill gaps for multi-day views
+                    if (rangeDays > 1)
+                    {
+                        var historyStart = todayDate.AddDays(-(rangeDays - 1));
+                        var yesterday = todayDate.AddDays(-1);
+                        var gaps = _historyService.FindGaps(historyStart, yesterday);
+                        foreach (var (gapStart, gapEnd) in gaps)
+                        {
+                            var records = await _automationService.FetchDailyUsageRecordsAsync(
+                                HiddenWebView, _settings, gapStart, gapEnd, CancellationToken.None);
+                            foreach (var (date, models) in records)
+                            {
+                                _historyService.UpdateDay(date, models);
+                            }
+                        }
+                    }
+
+                    _historyService.SaveToDisk();
+                }
+
+                // Step 3: Build the display snapshot
+                if (rangeDays == 1)
+                {
+                    // Today view: use hourly data directly
+                    _currentSnapshot = todaySnapshot;
                 }
                 else
                 {
-                    _currentSnapshot = await _automationService.RefreshUsageAsync(HiddenWebView, _settings, start, end, CancellationToken.None);
-                    _snapshotCache[cacheKey] = (_currentSnapshot, DateTimeOffset.Now);
+                    // Multi-day view: merge history cache into snapshot
+                    var historyStart = todayDate.AddDays(-(rangeDays - 1));
+                    _currentSnapshot = BuildMergedSnapshot(historyStart, todayDate, todaySnapshot, rangeDays);
                 }
 
                 RebuildUi();
@@ -188,6 +225,115 @@ public partial class MainWindow : Window
         {
             _isRefreshing = false;
         }
+    }
+
+    private void UpdateHistoryFromSnapshot(DateOnly date, UsageSnapshot snapshot)
+    {
+        var models = new List<ModelDailyUsage>();
+        foreach (var series in snapshot.ModelUsages)
+        {
+            models.Add(new ModelDailyUsage
+            {
+                Name = series.Label,
+                Tokens = series.TotalValue,
+            });
+        }
+
+        _historyService.UpdateDay(date, models);
+    }
+
+    private UsageSnapshot BuildMergedSnapshot(DateOnly start, DateOnly today, UsageSnapshot todaySnapshot, int rangeDays)
+    {
+        var cachedRecords = _historyService.GetRange(start, today);
+        var recordsByDate = cachedRecords.ToDictionary(r => DateOnly.Parse(r.Date, CultureInfo.InvariantCulture), r => r);
+
+        // Collect all model names across all days
+        var modelNames = new HashSet<string>();
+        foreach (var record in cachedRecords)
+        {
+            foreach (var model in record.Models)
+            {
+                modelNames.Add(model.Name);
+            }
+        }
+
+        // Build per-model series with daily points (fill gaps with 0)
+        var seriesList = new List<ModelUsageSeries>();
+        foreach (var modelName in modelNames)
+        {
+            var points = new List<UsageSeriesPoint>();
+            for (var d = start; d <= today; d = d.AddDays(1))
+            {
+                var tokens = 0d;
+                if (recordsByDate.TryGetValue(d, out var record))
+                {
+                    var usage = record.Models.FirstOrDefault(m => m.Name == modelName);
+                    tokens = usage?.Tokens ?? 0d;
+                }
+
+                points.Add(new UsageSeriesPoint
+                {
+                    Time = d.ToDateTime(TimeOnly.MinValue),
+                    Value = tokens,
+                });
+            }
+
+            var total = points.Sum(p => p.Value);
+            seriesList.Add(new ModelUsageSeries
+            {
+                Label = modelName,
+                DisplayValue = FormatCompactNumberStatic(total),
+                TotalValue = total,
+                Points = points,
+            });
+        }
+
+        seriesList = seriesList.OrderByDescending(s => s.TotalValue).ToList();
+
+        // Build total series
+        var totalPoints = new List<UsageSeriesPoint>();
+        for (var d = start; d <= today; d = d.AddDays(1))
+        {
+            var dayTotal = 0d;
+            if (recordsByDate.TryGetValue(d, out var rec))
+            {
+                dayTotal = rec.Models.Sum(m => m.Tokens);
+            }
+
+            totalPoints.Add(new UsageSeriesPoint
+            {
+                Time = d.ToDateTime(TimeOnly.MinValue),
+                Value = dayTotal,
+            });
+        }
+
+        var totalSeries = new ModelUsageSeries
+        {
+            Label = "总用量",
+            DisplayValue = FormatCompactNumberStatic(totalPoints.Sum(p => p.Value)),
+            TotalValue = totalPoints.Sum(p => p.Value),
+            Points = totalPoints,
+        };
+
+        return new UsageSnapshot
+        {
+            Status = todaySnapshot.Status,
+            LastUpdated = DateTimeOffset.Now,
+            Quotas = todaySnapshot.Quotas,
+            ModelUsages = seriesList,
+            TotalUsageSeries = totalSeries,
+            RawSummary = todaySnapshot.RawSummary,
+            IsLoggedIn = todaySnapshot.IsLoggedIn,
+            CurrentUrl = todaySnapshot.CurrentUrl,
+            RangeDays = rangeDays,
+        };
+    }
+
+    private static string FormatCompactNumberStatic(double value)
+    {
+        if (value >= 1_000_000) return $"{value / 1_000_000d:0.##} M";
+        if (value >= 1_000) return $"{value / 1_000d:0.##} K";
+        return value.ToString("0.##", CultureInfo.InvariantCulture);
     }
 
     private void RebuildUi()
@@ -469,6 +615,13 @@ public partial class MainWindow : Window
         await RefreshUsageAsync();
     }
 
+    private async void Month60RangeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyDatesForPreset(60);
+        await _settingsService.SaveAsync(_settings);
+        await RefreshUsageAsync();
+    }
+
     private void CurveSelectorButton_Click(object sender, RoutedEventArgs e)
     {
         CurveContextMenu.PlacementTarget = CurveSelectorButton;
@@ -520,7 +673,6 @@ public partial class MainWindow : Window
 
     private async void RefreshMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        _snapshotCache.Clear();
         await RefreshUsageAsync();
     }
 
