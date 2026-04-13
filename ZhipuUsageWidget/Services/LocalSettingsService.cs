@@ -44,7 +44,7 @@ public sealed class LocalSettingsService
             Password = Decrypt(persisted.PasswordProtected),
             RefreshIntervalMinutes = persisted.RefreshIntervalMinutes <= 0 ? 10 : persisted.RefreshIntervalMinutes,
             AutoLogin = persisted.AutoLogin,
-            RangeDays = persisted.RangeDays is 1 or 7 or 30 ? persisted.RangeDays : 7,
+            RangeDays = persisted.RangeDays is 1 or 7 or 30 or 60 ? persisted.RangeDays : 7,
             IsCollapsed = persisted.IsCollapsed,
             SelectedModels = persisted.SelectedModels?.Count > 0
                 ? [.. persisted.SelectedModels]

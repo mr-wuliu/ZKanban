@@ -13,6 +13,10 @@ public sealed class BigModelAutomationService
     public const string UsageUrl = "https://bigmodel.cn/coding-plan/personal/usage";
     public const string LoginUrl = "https://bigmodel.cn/login?redirect=%2Fcoding-plan%2Fpersonal%2Fusage";
 
+    private sealed record AuthContext(string Token, string Organization, string Project);
+
+    private AuthContext? _cachedAuth;
+
     private static readonly string WebViewUserDataFolder = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "ZhipuUsageWidget",
@@ -65,6 +69,71 @@ public sealed class BigModelAutomationService
         return RefreshUsageAsync(webView, settings, null, null, cancellationToken);
     }
 
+    /// <summary>
+    /// Fetches daily-granularity usage records for a date range (for backfilling history cache).
+    /// Each returned tuple contains the date and a list of per-model token totals for that day.
+    /// </summary>
+    public async Task<List<(DateOnly Date, List<ModelDailyUsage> Models)>> FetchDailyUsageRecordsAsync(
+        WebView2 webView, CredentialSettings settings, DateOnly start, DateOnly end, CancellationToken ct)
+    {
+        await EnsureInitializedAsync(webView);
+
+        // Skip full login check if auth is already cached (caller already verified login in Step 1)
+        if (_cachedAuth is null)
+        {
+            var loginState = await GetLoginStateAsync(webView, settings, settings.AutoLogin, ct);
+            if (!loginState.IsLoggedIn)
+            {
+                return [];
+            }
+        }
+
+        var startTime = start.ToDateTime(TimeOnly.MinValue);
+        var endTime = end.ToDateTime(new TimeOnly(23, 59, 59));
+        var query = $"/api/monitor/usage/model-usage?startTime={Uri.EscapeDataString(startTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))}&endTime={Uri.EscapeDataString(endTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))}";
+        var usageResult = await FetchUsageDataAsync<ModelUsageApiResponse>(webView, query);
+
+        if (usageResult?.Data?.XTime is null || usageResult.Data.ModelDataList is null)
+        {
+            return [];
+        }
+
+        var records = new List<(DateOnly Date, List<ModelDailyUsage> Models)>();
+
+        for (var i = 0; i < usageResult.Data.XTime.Count; i++)
+        {
+            if (!DateTime.TryParse(usageResult.Data.XTime[i], out var time))
+            {
+                continue;
+            }
+
+            var date = DateOnly.FromDateTime(time);
+            var models = new List<ModelDailyUsage>();
+
+            foreach (var item in usageResult.Data.ModelDataList)
+            {
+                if (string.IsNullOrWhiteSpace(item.ModelName))
+                {
+                    continue;
+                }
+
+                var tokens = item.TokensUsage is not null && i < item.TokensUsage.Count
+                    ? item.TokensUsage[i]
+                    : 0d;
+
+                models.Add(new ModelDailyUsage
+                {
+                    Name = item.ModelName.Trim(),
+                    Tokens = tokens,
+                });
+            }
+
+            records.Add((date, models));
+        }
+
+        return records;
+    }
+
     public async Task<LoginStateInfo> GetLoginStateAsync(WebView2 webView, CredentialSettings settings, bool allowAutoLogin, CancellationToken cancellationToken)
     {
         await EnsureInitializedAsync(webView);
@@ -104,7 +173,7 @@ public sealed class BigModelAutomationService
 
         return usageResult?.Data?.ModelSummaryList?
             .Where(item => !string.IsNullOrWhiteSpace(item.ModelName))
-            .Select(item => $"{item.ModelName.Trim()} 消耗")
+            .Select(item => item.ModelName.Trim())
             .ToList() ?? [];
     }
 
@@ -118,6 +187,7 @@ public sealed class BigModelAutomationService
     public async Task LogoutAsync(WebView2 webView, CancellationToken cancellationToken)
     {
         await EnsureInitializedAsync(webView);
+        _cachedAuth = null;
         var core = webView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 未初始化。");
         core.CookieManager.DeleteAllCookies();
         await core.Profile.ClearBrowsingDataAsync();
@@ -186,8 +256,6 @@ public sealed class BigModelAutomationService
             }
             await Task.Delay(500, cancellationToken);
         }
-
-        await Task.Delay(1000, cancellationToken);
     }
 
     private static bool NeedsLogin(string currentUrl)
@@ -256,23 +324,28 @@ public sealed class BigModelAutomationService
         }
     }
 
-    private static async Task<T?> FetchUsageDataAsync<T>(WebView2 webView, string relativeUrl)
+    private async Task<T?> FetchUsageDataAsync<T>(WebView2 webView, string relativeUrl)
     {
         var core = webView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 未初始化。");
-        var cookies = await core.CookieManager.GetCookiesAsync(UsageUrl);
-        var token = cookies.FirstOrDefault(cookie => cookie.Name.Equals("bigmodel_token_production", StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
-        var organization = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Organization') || ''");
-        var project = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Project') || ''");
-        WidgetTrace.Write($"Fetch headers tokenLen={token.Length}, org={organization}, project={project}");
+
+        if (_cachedAuth is null)
+        {
+            var cookies = await core.CookieManager.GetCookiesAsync(UsageUrl);
+            var token = cookies.FirstOrDefault(cookie => cookie.Name.Equals("bigmodel_token_production", StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
+            var organization = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Organization') || ''");
+            var project = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Project') || ''");
+            WidgetTrace.Write($"Fetch headers tokenLen={token.Length}, org={organization}, project={project}");
+            _cachedAuth = new AuthContext(token, organization, project);
+        }
 
         var script = $$"""
             (() => {
               const xhr = new XMLHttpRequest();
               xhr.open('GET', {{JsonSerializer.Serialize(relativeUrl)}}, false);
               xhr.withCredentials = true;
-              xhr.setRequestHeader('Authorization', {{JsonSerializer.Serialize(Uri.UnescapeDataString(token))}});
-              xhr.setRequestHeader('Bigmodel-Organization', {{JsonSerializer.Serialize(organization)}});
-              xhr.setRequestHeader('Bigmodel-Project', {{JsonSerializer.Serialize(project)}});
+              xhr.setRequestHeader('Authorization', {{JsonSerializer.Serialize(Uri.UnescapeDataString(_cachedAuth.Token))}});
+              xhr.setRequestHeader('Bigmodel-Organization', {{JsonSerializer.Serialize(_cachedAuth.Organization)}});
+              xhr.setRequestHeader('Bigmodel-Project', {{JsonSerializer.Serialize(_cachedAuth.Project)}});
               xhr.setRequestHeader('Set-Language', 'zh');
               xhr.send();
               return xhr.responseText;
@@ -369,7 +442,7 @@ public sealed class BigModelAutomationService
                 continue;
             }
 
-            var label = $"{item.ModelName} 消耗";
+            var label = item.ModelName;
             var points = new List<UsageSeriesPoint>();
             for (var i = 0; i < Math.Min(response.Data.XTime.Count, item.TokensUsage?.Count ?? 0); i++)
             {
