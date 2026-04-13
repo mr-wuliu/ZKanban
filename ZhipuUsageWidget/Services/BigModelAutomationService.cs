@@ -418,7 +418,7 @@ public sealed class BigModelAutomationService
     {
         return response?.Data?.Limits?.Select(item => new UsageQuotaMetric
         {
-            Label = item.Type == "TIME_LIMIT" ? "每5小时使用额度" : "MCP 每月额度",
+            Label = item.Type == "TIME_LIMIT" ? "MCP 每月额度" : "每5小时使用额度",
             Percent = item.Percentage,
             PercentText = $"{item.Percentage}%",
             ResetText = item.NextResetTime > 0
