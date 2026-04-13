@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="设置"
-        Width="360"
-        Height="480"
+        Width="320"
+        Height="380"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -43,45 +43,45 @@
 
             <!-- Content -->
             <ScrollViewer Grid.Row="1" Margin="6,8,6,0" VerticalScrollBarVisibility="Auto" Background="Transparent">
-                <StackPanel Margin="0,0,0,6">
-                    <Border Style="{StaticResource GlassPanelStyle}" Margin="0,0,0,10" Padding="10">
+                <StackPanel Margin="0,0,0,4">
+                    <Border Style="{StaticResource GlassPanelStyle}" Margin="0,0,0,6" Padding="8">
                         <StackPanel>
                             <TextBlock Text="登录状态" Foreground="#94A3B8" FontSize="11" />
-                            <TextBlock x:Name="LoginStatusTextBlock" Margin="0,4,0,0" FontSize="15" FontWeight="SemiBold" Foreground="#F8FAFC" />
+                            <TextBlock x:Name="LoginStatusTextBlock" Margin="0,2,0,0" FontSize="14" FontWeight="SemiBold" Foreground="#F8FAFC" />
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Margin="0,0,0,4" Text="账号" Foreground="#CBD5E1" FontSize="12" />
-                    <TextBox x:Name="UsernameTextBox" Margin="0,0,0,10" />
+                    <TextBlock Margin="0,0,0,2" Text="账号" Foreground="#CBD5E1" FontSize="12" />
+                    <TextBox x:Name="UsernameTextBox" Margin="0,0,0,6" />
 
-                    <TextBlock Margin="0,0,0,4" Text="密码" Foreground="#CBD5E1" FontSize="12" />
-                    <PasswordBox x:Name="PasswordTextBox" Margin="0,0,0,10" />
+                    <TextBlock Margin="0,0,0,2" Text="密码" Foreground="#CBD5E1" FontSize="12" />
+                    <PasswordBox x:Name="PasswordTextBox" Margin="0,0,0,6" />
 
-                    <TextBlock Margin="0,0,0,4" Text="刷新间隔（分钟）" Foreground="#CBD5E1" FontSize="12" />
+                    <TextBlock Margin="0,0,0,2" Text="刷新间隔（分钟）" Foreground="#CBD5E1" FontSize="12" />
                     <TextBox x:Name="RefreshIntervalTextBox" />
-                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,8,0,0" Content="允许自动登录" FontSize="12" />
+                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,4,0,0" Content="允许自动登录" FontSize="12" />
 
-                    <TextBlock Margin="0,12,0,6" Text="展示模型" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
-                    <Border Style="{StaticResource GlassPanelStyle}" Padding="10">
+                    <TextBlock Margin="0,8,0,4" Text="展示模型" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
+                    <Border Style="{StaticResource GlassPanelStyle}" Padding="8">
                         <StackPanel>
                             <TextBlock Foreground="#94A3B8" FontSize="11" Text="勾选后作为默认曲线和概览数据来源。" TextWrapping="Wrap" />
-                            <ItemsControl x:Name="ModelOptionsItemsControl" Margin="0,6,0,0">
+                            <ItemsControl x:Name="ModelOptionsItemsControl" Margin="0,4,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,0,4" FontSize="12" />
+                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,0,2" FontSize="12" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Margin="0,12,0,6" Text="登录操作" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
+                    <TextBlock Margin="0,8,0,4" Text="登录操作" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
                     <StackPanel Orientation="Horizontal">
                         <Button Style="{StaticResource GhostButtonStyle}" Content="检查登录状态" Click="CheckStatusButton_Click" Margin="0,0,6,0" FontSize="12" />
                         <Button Style="{StaticResource GhostButtonStyle}" Content="清空登录态" Click="LogoutButton_Click" FontSize="12" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                         <Button Style="{StaticResource GhostButtonStyle}" Content="取消" Click="CancelButton_Click" Width="72" Margin="0,0,6,0" />
                         <Button Style="{StaticResource PrimaryButtonStyle}" Content="保存" Click="SaveButton_Click" Width="72" />
                     </StackPanel>
