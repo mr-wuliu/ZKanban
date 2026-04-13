@@ -54,14 +54,19 @@
 ### 环境要求
 
 - **Windows 10** (1809+) 或 **Windows 11**
-- **.NET 10.0 SDK** ([下载](https://dotnet.microsoft.com/download/dotnet/10.0))
 - **Microsoft Edge WebView2 Runtime** ([下载](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)) — Windows 11 通常已内置
 
-### 运行
+### 直接下载（推荐）
+
+前往 [Releases](https://github.com/mr-wuliu/ZKanban/releases) 页面下载最新版 `ZhipuUsageWidget.exe`，双击即可运行，无需安装 .NET。
+
+### 从源码运行
+
+需额外安装 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
 
 ```powershell
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/ZKanban.git
+git clone https://github.com/mr-wuliu/ZKanban.git
 cd ZKanban
 
 # 启动应用（自动检测源码变更并构建）
@@ -119,6 +124,8 @@ ZKanban/
 ├── ZKanban.slnx                           # 解决方案文件
 ├── manage.ps1                             # 管理脚本（启动/停止/重启）
 │
+├── .github/workflows/release.yml          # CI：Release 自动打包 exe
+│
 ├── ZhipuUsageWidget/                      # 主项目
 │   ├── App.xaml                           # 应用入口 + 全局样式
 │   ├── MainWindow.xaml / .cs              # 主窗口（悬浮窗）
@@ -175,12 +182,13 @@ ZKanban/
 cd ZhipuUsageWidget.Tests
 dotnet test
 
-# 发布 Release 版本
+# 发布 Release 版本（self-contained 单文件 exe）
 cd ZhipuUsageWidget
-dotnet publish -c Release -r win-x64 --self-contained false
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
 发布输出位于 `ZhipuUsageWidget\bin\Release\net10.0-windows\win-x64\publish\`。
+推送到 GitHub 后通过 Release 自动打包，详见 `.github/workflows/release.yml`。
 
 ---
 
