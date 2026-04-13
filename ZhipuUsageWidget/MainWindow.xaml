@@ -40,6 +40,7 @@
                         <Button x:Name="TodayRangeButton" Style="{StaticResource TabButtonStyle}" Content="今天" Click="TodayRangeButton_Click" BorderThickness="0" />
                         <Button x:Name="WeekRangeButton" Style="{StaticResource TabButtonStyle}" Content="7天" Click="WeekRangeButton_Click" BorderThickness="0" />
                         <Button x:Name="MonthRangeButton" Style="{StaticResource TabButtonStyle}" Content="30天" Click="MonthRangeButton_Click" BorderThickness="0" />
+                        <Button x:Name="Month60RangeButton" Style="{StaticResource TabButtonStyle}" Content="60天" Click="Month60RangeButton_Click" BorderThickness="0" />
                     </StackPanel>
                 </Border>
 

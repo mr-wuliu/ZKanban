@@ -183,9 +183,20 @@
                         <Setter.Value>
                             <ControlTemplate TargetType="MenuItem">
                                 <Border x:Name="Bd" Background="Transparent" Padding="10,6" CornerRadius="4" SnapsToDevicePixels="True">
-                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Path x:Name="CheckMark" Data="M 0,5 L 3,9 L 9,1" Stroke="#67A6FF" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
+                                    </Grid>
                                 </Border>
                                 <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="Bd" Property="Background" Value="#152A40" />
+                                    </Trigger>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="Bd" Property="Background" Value="#1C3650" />
                                     </Trigger>
@@ -238,9 +249,20 @@
                         <Setter.Value>
                             <ControlTemplate TargetType="MenuItem">
                                 <Border x:Name="Bd" Background="Transparent" Padding="10,6" CornerRadius="4" SnapsToDevicePixels="True">
-                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Path x:Name="CheckMark" Data="M 0,5 L 3,9 L 9,1" Stroke="#67A6FF" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
+                                    </Grid>
                                 </Border>
                                 <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="Bd" Property="Background" Value="#152A40" />
+                                    </Trigger>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="Bd" Property="Background" Value="#1C3650" />
                                     </Trigger>
