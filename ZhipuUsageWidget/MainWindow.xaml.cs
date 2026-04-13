@@ -138,8 +138,11 @@ public partial class MainWindow : Window
     private void UpdateRangeButtons(string mode)
     {
         TodayRangeButton.Foreground = mode == "1" ? Brushes.White : CreateBrush("#94A3B8");
+        TodayRangeButton.Background = mode == "1" ? CreateBrush("#1C3650") : Brushes.Transparent;
         WeekRangeButton.Foreground = mode == "7" ? Brushes.White : CreateBrush("#94A3B8");
+        WeekRangeButton.Background = mode == "7" ? CreateBrush("#1C3650") : Brushes.Transparent;
         MonthRangeButton.Foreground = mode == "30" ? Brushes.White : CreateBrush("#94A3B8");
+        MonthRangeButton.Background = mode == "30" ? CreateBrush("#1C3650") : Brushes.Transparent;
     }
 
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
@@ -306,38 +309,6 @@ public partial class MainWindow : Window
 
     private void RenderLegend()
     {
-        LegendPanel.Children.Clear();
-        var displayed = GetDisplayedSeries();
-
-        if (displayed.Count == 0)
-        {
-            LegendDockPanel.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        foreach (var (series, index) in displayed.Take(3).Select((item, i) => (item, i)))
-        {
-            var text = new TextBlock { Margin = new Thickness(0, 0, 10, 0), Foreground = Brushes.White, FontSize = 10 };
-            text.Inlines.Add(new Run("● ") { Foreground = CreateBrush(Palette[index % Palette.Length]) });
-            text.Inlines.Add(new Run(series.Label));
-            LegendPanel.Children.Add(text);
-        }
-
-        if (displayed.Count > 3)
-        {
-            LegendPanel.Children.Add(new TextBlock
-            {
-                Text = $"+{displayed.Count - 3}",
-                Foreground = CreateBrush("#94A3B8"),
-                FontSize = 10,
-            });
-        }
-
-        ChartValueTextBlock.Text = displayed.Count == 1
-            ? displayed[0].DisplayValue
-            : string.Empty;
-
-        LegendDockPanel.Visibility = Visibility.Visible;
     }
 
     private IReadOnlyList<ModelUsageSeries> GetDisplayedSeries()
@@ -368,7 +339,6 @@ public partial class MainWindow : Window
             _chartDataEnd = null;
             CollapsedHintTextBlock.Visibility = Visibility.Visible;
             CollapsedHintTextBlock.Text = "没有可绘制的数据";
-            ChartValueTextBlock.Text = "--";
             return;
         }
 
@@ -376,6 +346,7 @@ public partial class MainWindow : Window
         _chartDataEnd = allPoints.Max(point => point.Time);
         var maxValue = Math.Max(1, allPoints.Max(point => point.Value));
         var gridRight = ChartLayoutHelper.ChartLeft + _chartWidth;
+        XAxisLine.X2 = gridRight;
         for (var i = 0; i < 4; i++)
         {
             var ratio = i / 3d;
@@ -419,7 +390,8 @@ public partial class MainWindow : Window
             ? Geometry.Parse("M4,6 L8,2 L12,6")
             : Geometry.Parse("M4,2 L8,6 L12,2");
 
-        ModeButtonsBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        ChartModeButton.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        SummaryModeButton.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         CurveSelectorButton.Visibility = collapsed || !_isChartMode ? Visibility.Collapsed : Visibility.Visible;
         RangeButtonsBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
 
@@ -445,8 +417,8 @@ public partial class MainWindow : Window
             Height = double.NaN;
         }
 
-        ChartModeButton.Foreground = _isChartMode ? Brushes.White : CreateBrush("#94A3B8");
-        SummaryModeButton.Foreground = !_isChartMode ? Brushes.White : CreateBrush("#94A3B8");
+        ChartModeIcon.Stroke = _isChartMode ? Brushes.White : CreateBrush("#94A3B8");
+        SummaryModeIcon.Stroke = !_isChartMode ? Brushes.White : CreateBrush("#94A3B8");
     }
 
     private void ApplyCollapsedState()
