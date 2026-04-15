@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Threading;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Threading;
 using ZhipuUsageWidget.Models;
 using ZhipuUsageWidget.Services;
 
@@ -23,7 +23,6 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<ChartSeriesViewModel> _chartSeries = [];
     private readonly ObservableCollection<ChartAxisLabelViewModel> _axisLabels = [];
-    private readonly ObservableCollection<ChartGridLineViewModel> _gridLines = [];
     private readonly ObservableCollection<MetricTileViewModel> _summaryItems = [];
     private readonly ObservableCollection<TrackDotViewModel> _trackDots = [];
     private readonly ObservableCollection<TrackSeriesItemViewModel> _trackSeriesItems = [];
@@ -32,6 +31,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly HashSet<string> _selectedCurveLabels = [];
     private readonly UsageHistoryService _historyService = new();
+    private readonly List<Control> _gridLineVisuals = [];
+    private readonly List<Control> _trackDotVisuals = [];
 
     private CredentialSettings _settings = CredentialSettings.CreateDefault();
     private UsageSnapshot? _currentSnapshot;
@@ -51,7 +52,6 @@ public partial class MainWindow : Window
         Height = ExpandedHeight;
         SeriesItemsControl.ItemsSource = _chartSeries;
         AxisLabelsItemsControl.ItemsSource = _axisLabels;
-        GridLinesItemsControl.ItemsSource = _gridLines;
         SummaryItemsControl.ItemsSource = _summaryItems;
         TrackDotsItemsControl.ItemsSource = _trackDots;
         TrackSeriesItemsControl.ItemsSource = _trackSeriesItems;
@@ -60,7 +60,24 @@ public partial class MainWindow : Window
         _refreshTimer.Tick += RefreshTimer_Tick;
     }
 
-    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private void TrackDotsContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container.DataContext is TrackDotViewModel vm)
+        {
+            Canvas.SetLeft(e.Container, vm.Left);
+            Canvas.SetTop(e.Container, vm.Top);
+        }
+    }
+
+    private void AxisLabelsContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container.DataContext is ChartAxisLabelViewModel vm)
+        {
+            Canvas.SetLeft(e.Container, vm.Left);
+        }
+    }
+
+    private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
     {
         _settings = await _settingsService.LoadAsync();
         _historyService.LoadFromDisk();
@@ -73,12 +90,12 @@ public partial class MainWindow : Window
         await RefreshUsageAsync();
     }
 
-    private void ChartCanvas_Loaded(object sender, RoutedEventArgs e)
+    private void ChartCanvas_Loaded(object? sender, RoutedEventArgs e)
     {
         ChartCanvas.SizeChanged += ChartCanvas_SizeChanged;
     }
 
-    private void ChartCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void ChartCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
         if (e.WidthChanged && _chartSeries.Count > 0)
         {
@@ -113,9 +130,15 @@ public partial class MainWindow : Window
 
     private void PositionToTopRight()
     {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right - ActualWidth - 16;
-        Top = area.Top + 16;
+        var screen = Screens?.ScreenFromWindow(this);
+        if (screen is not null)
+        {
+            var area = screen.WorkingArea;
+            var scaling = RenderScaling;
+            var x = (int)((area.X + area.Width) / scaling - Bounds.Width - 16);
+            var y = (int)(area.Y / scaling + 16);
+            Position = new PixelPoint(x, y);
+        }
     }
 
     private void ConfigureRefreshTimer()
@@ -288,7 +311,7 @@ public partial class MainWindow : Window
             });
         }
 
-        seriesList = seriesList.OrderByDescending(s => s.TotalValue).ToList();
+        seriesList = [.. seriesList.OrderByDescending(s => s.TotalValue)];
 
         // Build total series
         var totalPoints = new List<UsageSeriesPoint>();
@@ -376,10 +399,10 @@ public partial class MainWindow : Window
             _selectedCurveLabels.Add("总用量");
         }
 
-        _settings.SelectedModels = _selectedCurveLabels.ToList();
+        _settings.SelectedModels = [.. _selectedCurveLabels];
     }
 
-    private IReadOnlyList<ModelUsageSeries> GetAvailableSeries()
+    private List<ModelUsageSeries> GetAvailableSeries()
     {
         if (_currentSnapshot is null)
         {
@@ -404,44 +427,36 @@ public partial class MainWindow : Window
             var item = new MenuItem
             {
                 Header = series.Label,
-                IsCheckable = true,
+                ToggleType = MenuItemToggleType.CheckBox,
                 IsChecked = _selectedCurveLabels.Contains(series.Label),
-                StaysOpenOnClick = true,
                 Tag = series.Label,
             };
-            item.Checked += CurveMenuItem_Checked;
-            item.Unchecked += CurveMenuItem_Unchecked;
+            item.Click += CurveMenuItem_Click;
             CurveContextMenu.Items.Add(item);
         }
     }
 
-    private void CurveMenuItem_Checked(object sender, RoutedEventArgs e)
+    private void CurveMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem menuItem || menuItem.Tag is not string label)
         {
             return;
         }
 
-        _selectedCurveLabels.Add(label);
-        PersistCurveSelection();
-        RenderChart();
-        RenderLegend();
-    }
-
-    private void CurveMenuItem_Unchecked(object sender, RoutedEventArgs e)
-    {
-        if (sender is not MenuItem menuItem || menuItem.Tag is not string label)
+        if (menuItem.IsChecked == true)
         {
-            return;
+            _selectedCurveLabels.Add(label);
+        }
+        else
+        {
+            if (_selectedCurveLabels.Count <= 1 && _selectedCurveLabels.Contains(label))
+            {
+                menuItem.IsChecked = true;
+                return;
+            }
+            _selectedCurveLabels.Remove(label);
         }
 
-        if (_selectedCurveLabels.Count <= 1 && _selectedCurveLabels.Contains(label))
-        {
-            menuItem.IsChecked = true;
-            return;
-        }
-
-        _selectedCurveLabels.Remove(label);
         PersistCurveSelection();
         RenderChart();
         RenderLegend();
@@ -449,28 +464,32 @@ public partial class MainWindow : Window
 
     private void PersistCurveSelection()
     {
-        _settings.SelectedModels = _selectedCurveLabels.ToList();
+        _settings.SelectedModels = [.. _selectedCurveLabels];
         _ = _settingsService.SaveAsync(_settings);
     }
 
-    private void RenderLegend()
+    private static void RenderLegend()
     {
     }
 
-    private IReadOnlyList<ModelUsageSeries> GetDisplayedSeries()
+    private List<ModelUsageSeries> GetDisplayedSeries()
     {
-        return GetAvailableSeries()
-            .Where(item => _selectedCurveLabels.Contains(item.Label))
-            .ToList();
+        return [.. GetAvailableSeries().Where(item => _selectedCurveLabels.Contains(item.Label))];
     }
 
     private void RenderChart()
     {
         _chartSeries.Clear();
         _axisLabels.Clear();
-        _gridLines.Clear();
 
-        var canvasWidth = ChartCanvas.ActualWidth;
+        // Remove previous dynamic visuals from ChartCanvas
+        foreach (var visual in _gridLineVisuals)
+        {
+            ChartCanvas.Children.Remove(visual);
+        }
+        _gridLineVisuals.Clear();
+
+        var canvasWidth = ChartCanvas.Bounds.Width;
         _chartWidth = canvasWidth > ChartLayoutHelper.ChartLeft + 40
             ? canvasWidth - ChartLayoutHelper.ChartLeft
             : 370;
@@ -480,40 +499,81 @@ public partial class MainWindow : Window
 
         var seriesList = GetDisplayedSeries();
         var allPoints = seriesList.SelectMany(item => item.Points).ToList();
-        if (!seriesList.Any() || allPoints.Count == 0)
+        if (seriesList.Count == 0 || allPoints.Count == 0)
         {
             _chartDataEnd = null;
-            CollapsedHintTextBlock.Visibility = Visibility.Visible;
+            CollapsedHintTextBlock.IsVisible = true;
             CollapsedHintTextBlock.Text = "没有可绘制的数据";
             return;
         }
 
-        CollapsedHintTextBlock.Visibility = Visibility.Collapsed;
+        CollapsedHintTextBlock.IsVisible = false;
         _chartDataEnd = allPoints.Max(point => point.Time);
         var maxValue = Math.Max(1, allPoints.Max(point => point.Value));
         var gridRight = ChartLayoutHelper.ChartLeft + _chartWidth;
-        XAxisLine.X2 = gridRight;
+
+        // Update X-axis line
+        XAxisLine.Points = [new Point(34, 124), new Point(gridRight, 124)];
+
+        // Render grid lines directly to ChartCanvas
         for (var i = 0; i < 4; i++)
         {
             var ratio = i / 3d;
             var y = ChartTop + (1 - ratio) * ChartHeight;
-            _gridLines.Add(new ChartGridLineViewModel { Top = y, Right = gridRight, Label = FormatYAxis(maxValue * ratio) });
+
+            var line = new Polyline
+            {
+                Points = [new Point(38, y), new Point(gridRight, y)],
+                Stroke = new SolidColorBrush(Color.Parse("#2A3E54")),
+                StrokeThickness = 1,
+                StrokeDashArray = [2, 3],
+            };
+            ChartCanvas.Children.Add(line);
+            _gridLineVisuals.Add(line);
+
+            var label = new TextBlock
+            {
+                Text = FormatYAxis(maxValue * ratio),
+                Foreground = new SolidColorBrush(Color.Parse("#A8B8CC")),
+                FontSize = 10,
+                [Canvas.LeftProperty] = 0.0,
+                [Canvas.TopProperty] = y,
+            };
+            ChartCanvas.Children.Add(label);
+            _gridLineVisuals.Add(label);
         }
 
         for (var i = 0; i < seriesList.Count; i++)
         {
-            var points = new PointCollection(seriesList[i].Points.Select(point =>
+            var points = new List<Point>(seriesList[i].Points.Select(point =>
                 new Point(
                     ChartLayoutHelper.ComputePointX(point.Time, _currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd),
                     ChartTop + (1 - point.Value / maxValue) * ChartHeight)));
 
-            _chartSeries.Add(new ChartSeriesViewModel
+            var vm = new ChartSeriesViewModel
             {
                 Label = seriesList[i].Label,
                 DisplayValue = seriesList[i].DisplayValue,
                 Stroke = CreateBrush(Palette[i % Palette.Length]),
                 Points = points,
-            });
+            };
+            _chartSeries.Add(vm);
+
+            // Render curve Path directly to ChartCanvas (bypass ItemsControl binding issues)
+            if (vm.SmoothPath is { } geometry)
+            {
+                var path = new Avalonia.Controls.Shapes.Path
+                {
+                    Data = geometry,
+                    Stroke = vm.Stroke,
+                    StrokeThickness = 2.2,
+                    StrokeJoin = PenLineJoin.Round,
+                    StrokeLineCap = PenLineCap.Round,
+                    Fill = Brushes.Transparent,
+                };
+                ChartCanvas.Children.Add(path);
+                _gridLineVisuals.Add(path);
+            }
         }
 
         foreach (var label in ChartLayoutHelper.BuildAxisLabels(_currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd))
@@ -531,23 +591,37 @@ public partial class MainWindow : Window
     {
         var collapsed = _settings.IsCollapsed;
 
-        // Toggle icon: expanded → show minimize (▲), collapsed → show expand (▼)
-        ExpandButtonIcon.Data = collapsed
-            ? Geometry.Parse("M4,6 L8,2 L12,6")
-            : Geometry.Parse("M4,2 L8,6 L12,2");
+        // Toggle icon: expanded → show minus (−), collapsed → show cross (×)
+        MinusIcon.IsVisible = !collapsed;
+        CrossIcon1.IsVisible = collapsed;
+        CrossIcon2.IsVisible = collapsed;
 
-        ChartModeButton.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        SummaryModeButton.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        CurveSelectorButton.Visibility = collapsed || !_isChartMode ? Visibility.Collapsed : Visibility.Visible;
-        RangeButtonsBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        ChartModeButton.IsVisible = !collapsed;
+        SummaryModeButton.IsVisible = !collapsed;
+        CurveSelectorButton.IsVisible = !collapsed && _isChartMode;
+        RangeButtonsBorder.IsVisible = !collapsed;
+        TopmostButton.IsVisible = !collapsed;
+        GearButton.IsVisible = !collapsed;
+        CardHeaderBorder.IsVisible = !collapsed;
+
+        // Card header corners: standalone pill when collapsed, flat-bottom card header when expanded
+        CardHeaderBorder.CornerRadius = collapsed
+            ? new CornerRadius(8)
+            : new CornerRadius(8, 8, 0, 0);
+        CardHeaderBorder.BorderThickness = collapsed
+            ? new Thickness(1)
+            : new Thickness(1, 1, 1, 0);
 
         // Content area
-        ChartPanel.Visibility = collapsed || !_isChartMode ? Visibility.Collapsed : Visibility.Visible;
-        SummaryPanel.Visibility = collapsed || _isChartMode ? Visibility.Collapsed : Visibility.Visible;
-        CollapsedHintTextBlock.Visibility = collapsed ? Visibility.Collapsed : CollapsedHintTextBlock.Visibility;
-        ContentRow.Height = collapsed ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        ChartPanel.IsVisible = !collapsed && _isChartMode;
+        SummaryPanel.IsVisible = !collapsed && !_isChartMode;
+        CollapsedHintTextBlock.IsVisible = !collapsed && CollapsedHintTextBlock.IsVisible;
+        RootGrid.RowDefinitions[1].Height = collapsed ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
 
-        // Window sizing
+        // Window sizing — remember right edge (in DIP) so it stays anchored
+        var rightEdgeDip = Position.X / RenderScaling + Bounds.Width;
+        var topEdgeDip = Position.Y / RenderScaling;
+
         if (collapsed)
         {
             SizeToContent = SizeToContent.WidthAndHeight;
@@ -563,8 +637,16 @@ public partial class MainWindow : Window
             Height = double.NaN;
         }
 
-        ChartModeIcon.Stroke = _isChartMode ? Brushes.White : CreateBrush("#94A3B8");
-        SummaryModeIcon.Stroke = !_isChartMode ? Brushes.White : CreateBrush("#94A3B8");
+        // Re-anchor: right edge stays put, top edge stays put
+        Dispatcher.UIThread.Post(() =>
+        {
+            var x = (int)((rightEdgeDip - Bounds.Width) * RenderScaling);
+            var y = (int)(topEdgeDip * RenderScaling);
+            Position = new PixelPoint(x, y);
+        });
+
+        ChartModeIcon.Stroke = _isChartMode ? Brushes.White : CreateBrush("#7B92A8");
+        SummaryModeIcon.Stroke = !_isChartMode ? Brushes.White : CreateBrush("#7B92A8");
     }
 
     private void ApplyCollapsedState()
@@ -575,16 +657,7 @@ public partial class MainWindow : Window
 
     private static SolidColorBrush CreateBrush(string hex)
     {
-        return (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
-    }
-
-    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
-    {
-        base.OnRenderSizeChanged(sizeInfo);
-        if (sizeInfo.WidthChanged)
-        {
-            Left += sizeInfo.PreviousSize.Width - sizeInfo.NewSize.Width;
-        }
+        return new SolidColorBrush(Color.Parse(hex));
     }
 
     private static string FormatYAxis(double value)
@@ -594,99 +667,85 @@ public partial class MainWindow : Window
         return value.ToString("0");
     }
 
-    private async void TodayRangeButton_Click(object sender, RoutedEventArgs e)
+    private async void TodayRangeButton_Click(object? sender, RoutedEventArgs e)
     {
         ApplyDatesForPreset(1);
         await _settingsService.SaveAsync(_settings);
         await RefreshUsageAsync();
     }
 
-    private async void WeekRangeButton_Click(object sender, RoutedEventArgs e)
+    private async void WeekRangeButton_Click(object? sender, RoutedEventArgs e)
     {
         ApplyDatesForPreset(7);
         await _settingsService.SaveAsync(_settings);
         await RefreshUsageAsync();
     }
 
-    private async void MonthRangeButton_Click(object sender, RoutedEventArgs e)
+    private async void MonthRangeButton_Click(object? sender, RoutedEventArgs e)
     {
         ApplyDatesForPreset(30);
         await _settingsService.SaveAsync(_settings);
         await RefreshUsageAsync();
     }
 
-    private async void Month60RangeButton_Click(object sender, RoutedEventArgs e)
+    private async void Month60RangeButton_Click(object? sender, RoutedEventArgs e)
     {
         ApplyDatesForPreset(60);
         await _settingsService.SaveAsync(_settings);
         await RefreshUsageAsync();
     }
 
-    private void CurveSelectorButton_Click(object sender, RoutedEventArgs e)
+    private void CurveSelectorButton_Click(object? sender, RoutedEventArgs e)
     {
-        CurveContextMenu.PlacementTarget = CurveSelectorButton;
-        CurveContextMenu.IsOpen = true;
-        RemovePopupChrome(CurveContextMenu);
+        CurveContextMenu.Open(CurveSelectorButton);
     }
 
-    private void ChartModeButton_Click(object sender, RoutedEventArgs e)
+    private void ChartModeButton_Click(object? sender, RoutedEventArgs e)
     {
         _isChartMode = true;
         UpdatePanels();
     }
 
-    private void SummaryModeButton_Click(object sender, RoutedEventArgs e)
+    private void SummaryModeButton_Click(object? sender, RoutedEventArgs e)
     {
         _isChartMode = false;
         UpdatePanels();
     }
 
-    private void ChartModeMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ChartModeMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         _isChartMode = true;
         UpdatePanels();
     }
 
-    private void SummaryModeMenuItem_Click(object sender, RoutedEventArgs e)
+    private void SummaryModeMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         _isChartMode = false;
         UpdatePanels();
     }
 
-    private void GearButton_Click(object sender, RoutedEventArgs e)
+    private void GearButton_Click(object? sender, RoutedEventArgs e)
     {
-        GearContextMenu.PlacementTarget = GearButton;
-        GearContextMenu.IsOpen = true;
-        RemovePopupChrome(GearContextMenu);
+        GearContextMenu.Open(GearButton);
     }
 
-    private static void RemovePopupChrome(ContextMenu menu)
-    {
-        menu.Dispatcher.BeginInvoke(() =>
-        {
-            if (menu.Parent is Popup popup)
-            {
-                popup.AllowsTransparency = true;
-            }
-        }, System.Windows.Threading.DispatcherPriority.Loaded);
-    }
-
-    private async void RefreshMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void RefreshMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         await RefreshUsageAsync();
     }
 
-    private async void CollapseMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void CollapseMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         _settings.IsCollapsed = !_settings.IsCollapsed;
         await _settingsService.SaveAsync(_settings);
         UpdatePanels();
     }
 
-    private async void OpenSettingsMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void OpenSettingsMenuItem_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsWindow(_settings, _automationService) { Owner = this };
-        if (dialog.ShowDialog() != true)
+        var dialog = new SettingsWindow(_settings, _automationService);
+        var result = await dialog.ShowDialog<bool>(this);
+        if (!result)
         {
             return;
         }
@@ -699,20 +758,44 @@ public partial class MainWindow : Window
         await RefreshUsageAsync();
     }
 
-    private void CloseMenuItem_Click(object sender, RoutedEventArgs e)
+    private void CloseMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         Close();
     }
 
-    private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void TopmostMenuItem_Click(object? sender, RoutedEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed)
+        Topmost = !Topmost;
+        UpdateTopmostIcon();
+    }
+
+    private void TopmostButton_Click(object? sender, RoutedEventArgs e)
+    {
+        Topmost = !Topmost;
+        UpdateTopmostIcon();
+    }
+
+    private void UpdateTopmostIcon()
+    {
+        var brush = Topmost ? CreateBrush("#F8FAFC") : CreateBrush("#94A3B8");
+        TopmostPinHead.Stroke = brush;
+        TopmostPinBody.Background = brush;
+    }
+
+    private void RootBorder_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
-            DragMove();
+            BeginMoveDrag(e);
         }
     }
 
-    private void ChartCanvas_MouseMove(object sender, MouseEventArgs e)
+    private void OnEnvironmentRequested(object? sender, WebViewEnvironmentRequestedEventArgs e)
+    {
+        BigModelAutomationService.ConfigureWebViewEnvironment(sender, e);
+    }
+
+    private void ChartCanvas_PointerMoved(object? sender, PointerEventArgs e)
     {
         if (_chartSeries.Count == 0 || _currentSnapshot is null) return;
 
@@ -727,9 +810,8 @@ public partial class MainWindow : Window
         }
 
         // Vertical indicator line
-        TrackVerticalLine.X1 = x;
-        TrackVerticalLine.X2 = x;
-        TrackVerticalLine.Visibility = Visibility.Visible;
+        TrackVerticalLine.Points = [new Point(x, 0), new Point(x, 148)];
+        TrackVerticalLine.IsVisible = true;
 
         // Convert X to time
         var hitTime = ChartLayoutHelper.ComputeTimeFromX(x, _currentRangeStart, _currentRangeEnd, _chartWidth, _chartDataEnd);
@@ -737,6 +819,13 @@ public partial class MainWindow : Window
         // Find closest point in each series
         _trackDots.Clear();
         _trackSeriesItems.Clear();
+
+        // Remove previous track dot visuals
+        foreach (var visual in _trackDotVisuals)
+        {
+            ChartCanvas.Children.Remove(visual);
+        }
+        _trackDotVisuals.Clear();
 
         var seriesList = GetDisplayedSeries();
         var allPoints = seriesList.SelectMany(s => s.Points).ToList();
@@ -750,16 +839,31 @@ public partial class MainWindow : Window
             var py = ChartTop + (1 - closest.Value / maxValue) * ChartHeight;
 
             var stroke = CreateBrush(Palette[i % Palette.Length]);
+
+            // Render track dot directly to ChartCanvas
+            var dot = new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Stroke = stroke,
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Color.Parse("#0F1A2A")),
+                [Canvas.LeftProperty] = px - 3.5,
+                [Canvas.TopProperty] = py - 3.5,
+            };
+            ChartCanvas.Children.Add(dot);
+            _trackDotVisuals.Add(dot);
+
             _trackDots.Add(new TrackDotViewModel { Left = px - 3.5, Top = py - 3.5, Stroke = stroke });
             _trackSeriesItems.Add(new TrackSeriesItemViewModel { Stroke = stroke, Text = $"{series.Label}: {closest.Value:0.#}" });
         }
 
-        TrackDotsItemsControl.Visibility = Visibility.Visible;
+        TrackDotsItemsControl.IsVisible = true;
 
         // Tooltip
         TrackTimeText.Text = hitTime.ToString("MM-dd HH:mm");
         TrackSeriesItemsControl.ItemsSource = _trackSeriesItems;
-        TrackToolTip.Visibility = Visibility.Visible;
+        TrackToolTip.IsVisible = true;
 
         // Position tooltip - prefer right of cursor, flip left if overflow
         var tooltipX = x + 10;
@@ -770,28 +874,22 @@ public partial class MainWindow : Window
         Canvas.SetTop(TrackToolTip, Math.Max(4, tooltipY));
     }
 
-    private void ChartCanvas_MouseLeave(object sender, MouseEventArgs e)
+    private void ChartCanvas_PointerLeave(object? sender, PointerEventArgs e)
     {
         HideTrackOverlay();
     }
 
     private void HideTrackOverlay()
     {
-        TrackVerticalLine.Visibility = Visibility.Collapsed;
-        TrackDotsItemsControl.Visibility = Visibility.Collapsed;
-        TrackToolTip.Visibility = Visibility.Collapsed;
+        TrackVerticalLine.IsVisible = false;
+        TrackDotsItemsControl.IsVisible = false;
+        TrackToolTip.IsVisible = false;
+
+        // Remove track dot visuals
+        foreach (var visual in _trackDotVisuals)
+        {
+            ChartCanvas.Children.Remove(visual);
+        }
+        _trackDotVisuals.Clear();
     }
-}
-
-public sealed class TrackDotViewModel
-{
-    public double Left { get; init; }
-    public double Top { get; init; }
-    public System.Windows.Media.Brush Stroke { get; init; } = System.Windows.Media.Brushes.White;
-}
-
-public sealed class TrackSeriesItemViewModel
-{
-    public System.Windows.Media.Brush Stroke { get; init; } = System.Windows.Media.Brushes.White;
-    public string Text { get; init; } = string.Empty;
 }
