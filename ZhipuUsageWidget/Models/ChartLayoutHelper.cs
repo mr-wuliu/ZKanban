@@ -81,6 +81,11 @@ public static class ChartLayoutHelper
         var requestedEnd = rangeEnd.Date == start ? DateTime.Now : rangeEnd.Date.AddDays(1);
         if (rangeEnd.Date == start)
         {
+            // For "today" view, use the latest data point as end if available
+            if (dataEnd is not null && dataEnd.Value > start && dataEnd.Value < requestedEnd)
+            {
+                return dataEnd.Value;
+            }
             return requestedEnd;
         }
 
@@ -102,7 +107,7 @@ public static class ChartLayoutHelper
 
         if (elapsedHours <= 6)
         {
-            return Enumerable.Range(0, elapsedHours + 1).ToList();
+            return [.. Enumerable.Range(0, elapsedHours + 1)];
         }
 
         var step = elapsedHours <= 12 ? 2 : elapsedHours <= 18 ? 3 : 4;

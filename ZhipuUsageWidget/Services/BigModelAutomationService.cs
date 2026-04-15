@@ -2,8 +2,8 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
+using Avalonia.Controls;
+using Avalonia.Platform;
 using ZhipuUsageWidget.Models;
 
 namespace ZhipuUsageWidget.Services;
@@ -22,10 +22,21 @@ public sealed class BigModelAutomationService
         "ZhipuUsageWidget",
         "WebView2");
 
-    public async Task<UsageSnapshot> RefreshUsageAsync(WebView2 webView, CredentialSettings settings, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken)
+    /// <summary>
+    /// Configures the NativeWebView environment (user data folder, disable dev tools).
+    /// Wire this up to the NativeWebView.EnvironmentRequested event in XAML or code-behind.
+    /// </summary>
+    internal static void ConfigureWebViewEnvironment(object? sender, WebViewEnvironmentRequestedEventArgs e)
     {
-        await EnsureInitializedAsync(webView);
+        e.EnableDevTools = false;
+        if (e is WindowsWebView2EnvironmentRequestedEventArgs webView2)
+        {
+            webView2.UserDataFolder = WebViewUserDataFolder;
+        }
+    }
 
+    public async Task<UsageSnapshot> RefreshUsageAsync(NativeWebView webView, CredentialSettings settings, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken)
+    {
         var loginState = await GetLoginStateAsync(webView, settings, settings.AutoLogin, cancellationToken);
         if (!loginState.IsLoggedIn)
         {
@@ -41,8 +52,8 @@ public sealed class BigModelAutomationService
         }
 
         var quotaResult = await FetchUsageDataAsync<QuotaApiResponse>(webView, "/api/monitor/usage/quota/limit");
-        var range = BuildRange(settings.RangeDays, startDate, endDate);
-        var query = $"/api/monitor/usage/model-usage?startTime={Uri.EscapeDataString(range.Start)}&endTime={Uri.EscapeDataString(range.End)}";
+        var (Start, End, DisplayText) = BuildRange(settings.RangeDays, startDate, endDate);
+        var query = $"/api/monitor/usage/model-usage?startTime={Uri.EscapeDataString(Start)}&endTime={Uri.EscapeDataString(End)}";
         var usageResult = await FetchUsageDataAsync<ModelUsageApiResponse>(webView, query);
 
         var quotas = ExtractQuotas(quotaResult);
@@ -57,14 +68,14 @@ public sealed class BigModelAutomationService
             Quotas = quotas,
             ModelUsages = series,
             TotalUsageSeries = totalSeries,
-            RawSummary = $"当前页面: {loginState.CurrentUrl}\n范围: {range.DisplayText}",
+            RawSummary = $"当前页面: {loginState.CurrentUrl}\n范围: {DisplayText}",
             IsLoggedIn = true,
             CurrentUrl = loginState.CurrentUrl,
             RangeDays = settings.RangeDays,
         };
     }
 
-    public Task<UsageSnapshot> RefreshUsageAsync(WebView2 webView, CredentialSettings settings, CancellationToken cancellationToken)
+    public Task<UsageSnapshot> RefreshUsageAsync(NativeWebView webView, CredentialSettings settings, CancellationToken cancellationToken)
     {
         return RefreshUsageAsync(webView, settings, null, null, cancellationToken);
     }
@@ -74,10 +85,8 @@ public sealed class BigModelAutomationService
     /// Each returned tuple contains the date and a list of per-model token totals for that day.
     /// </summary>
     public async Task<List<(DateOnly Date, List<ModelDailyUsage> Models)>> FetchDailyUsageRecordsAsync(
-        WebView2 webView, CredentialSettings settings, DateOnly start, DateOnly end, CancellationToken ct)
+        NativeWebView webView, CredentialSettings settings, DateOnly start, DateOnly end, CancellationToken ct)
     {
-        await EnsureInitializedAsync(webView);
-
         // Skip full login check if auth is already cached (caller already verified login in Step 1)
         if (_cachedAuth is null)
         {
@@ -134,9 +143,8 @@ public sealed class BigModelAutomationService
         return records;
     }
 
-    public async Task<LoginStateInfo> GetLoginStateAsync(WebView2 webView, CredentialSettings settings, bool allowAutoLogin, CancellationToken cancellationToken)
+    public static async Task<LoginStateInfo> GetLoginStateAsync(NativeWebView webView, CredentialSettings settings, bool allowAutoLogin, CancellationToken cancellationToken)
     {
-        await EnsureInitializedAsync(webView);
         await NavigateAsync(webView, UsageUrl, cancellationToken);
         await WaitForDocumentReadyAsync(webView, cancellationToken);
 
@@ -158,17 +166,16 @@ public sealed class BigModelAutomationService
         };
     }
 
-    public async Task<List<string>> FetchAvailableModelsAsync(WebView2 webView, CredentialSettings settings, CancellationToken cancellationToken)
+    public async Task<List<string>> FetchAvailableModelsAsync(NativeWebView webView, CredentialSettings settings, CancellationToken cancellationToken)
     {
-        await EnsureInitializedAsync(webView);
         var loginState = await GetLoginStateAsync(webView, settings, settings.AutoLogin, cancellationToken);
         if (!loginState.IsLoggedIn)
         {
             return [];
         }
 
-        var range = BuildRange(7, null, null);
-        var query = $"/api/monitor/usage/model-usage?startTime={Uri.EscapeDataString(range.Start)}&endTime={Uri.EscapeDataString(range.End)}";
+        var (Start, End, DisplayText) = BuildRange(7, null, null);
+        var query = $"/api/monitor/usage/model-usage?startTime={Uri.EscapeDataString(Start)}&endTime={Uri.EscapeDataString(End)}";
         var usageResult = await FetchUsageDataAsync<ModelUsageApiResponse>(webView, query);
 
         return usageResult?.Data?.ModelSummaryList?
@@ -177,50 +184,37 @@ public sealed class BigModelAutomationService
             .ToList() ?? [];
     }
 
-    public async Task OpenLoginPageAsync(WebView2 webView, CancellationToken cancellationToken)
+    public static async Task OpenLoginPageAsync(NativeWebView webView, CancellationToken cancellationToken)
     {
-        await EnsureInitializedAsync(webView);
         await NavigateAsync(webView, LoginUrl, cancellationToken);
         await WaitForDocumentReadyAsync(webView, cancellationToken);
     }
 
-    public async Task LogoutAsync(WebView2 webView, CancellationToken cancellationToken)
+    public async Task LogoutAsync(NativeWebView webView, CancellationToken cancellationToken)
     {
-        await EnsureInitializedAsync(webView);
         _cachedAuth = null;
-        var core = webView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 未初始化。");
-        core.CookieManager.DeleteAllCookies();
-        await core.Profile.ClearBrowsingDataAsync();
+        var cookieManager = webView.TryGetCookieManager();
+        if (cookieManager is not null)
+        {
+            var cookies = await cookieManager.GetCookiesAsync();
+            foreach (var cookie in cookies)
+            {
+                cookieManager.DeleteCookie(cookie.Name, cookie.Domain, cookie.Path);
+            }
+        }
         await NavigateAsync(webView, LoginUrl, cancellationToken);
     }
 
-    private static async Task EnsureInitializedAsync(WebView2 webView)
+    private static async Task NavigateAsync(NativeWebView webView, string url, CancellationToken cancellationToken)
     {
-        if (webView.CoreWebView2 is not null)
-        {
-            return;
-        }
-
-        Directory.CreateDirectory(WebViewUserDataFolder);
-        var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: WebViewUserDataFolder);
-        await webView.EnsureCoreWebView2Async(environment);
-        var core = webView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 初始化失败。");
-        core.Settings.AreDefaultContextMenusEnabled = false;
-        core.Settings.AreDevToolsEnabled = false;
-        core.Settings.IsStatusBarEnabled = false;
-    }
-
-    private static async Task NavigateAsync(WebView2 webView, string url, CancellationToken cancellationToken)
-    {
-        var core = webView.CoreWebView2!;
-        var current = core.Source ?? string.Empty;
+        var current = webView.Source?.ToString() ?? string.Empty;
         if (current.TrimEnd('/').Equals(url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        void Handler(object? _, CoreWebView2NavigationCompletedEventArgs args)
+        void Handler(object? _, WebViewNavigationCompletedEventArgs args)
         {
             webView.NavigationCompleted -= Handler;
             if (args.IsSuccess)
@@ -229,7 +223,7 @@ public sealed class BigModelAutomationService
             }
             else
             {
-                tcs.TrySetException(new InvalidOperationException($"页面加载失败: {args.WebErrorStatus}"));
+                tcs.TrySetException(new InvalidOperationException("页面加载失败。"));
             }
         }
 
@@ -244,7 +238,7 @@ public sealed class BigModelAutomationService
         await tcs.Task;
     }
 
-    private static async Task WaitForDocumentReadyAsync(WebView2 webView, CancellationToken cancellationToken)
+    private static async Task WaitForDocumentReadyAsync(NativeWebView webView, CancellationToken cancellationToken)
     {
         for (var i = 0; i < 30; i++)
         {
@@ -265,7 +259,7 @@ public sealed class BigModelAutomationService
                || currentUrl.Contains("auth", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task TryAutoLoginAsync(WebView2 webView, CredentialSettings settings, CancellationToken cancellationToken)
+    private static async Task TryAutoLoginAsync(NativeWebView webView, CredentialSettings settings, CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < 4; attempt++)
         {
@@ -324,13 +318,13 @@ public sealed class BigModelAutomationService
         }
     }
 
-    private async Task<T?> FetchUsageDataAsync<T>(WebView2 webView, string relativeUrl)
+    private async Task<T?> FetchUsageDataAsync<T>(NativeWebView webView, string relativeUrl)
     {
-        var core = webView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 未初始化。");
-
         if (_cachedAuth is null)
         {
-            var cookies = await core.CookieManager.GetCookiesAsync(UsageUrl);
+            var cookieManager = webView.TryGetCookieManager()
+                ?? throw new InvalidOperationException("WebView 未初始化或 Cookie 管理器不可用。");
+            var cookies = await cookieManager.GetCookiesAsync();
             var token = cookies.FirstOrDefault(cookie => cookie.Name.Equals("bigmodel_token_production", StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
             var organization = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Organization') || ''");
             var project = await ExecuteJsonAsync<string>(webView, "localStorage.getItem('Bigmodel-Project') || ''");
@@ -356,19 +350,19 @@ public sealed class BigModelAutomationService
         return JsonSerializer.Deserialize<T>(raw);
     }
 
-    private static async Task<string> GetLocationAsync(WebView2 webView)
+    private static async Task<string> GetLocationAsync(NativeWebView webView)
     {
         return await ExecuteJsonAsync<string>(webView, "window.location.href");
     }
 
-    private static async Task<string> GetBodyTextAsync(WebView2 webView)
+    private static async Task<string> GetBodyTextAsync(NativeWebView webView)
     {
         return await ExecuteJsonAsync<string>(webView, "(() => document.body ? document.body.innerText : '')()");
     }
 
-    private static async Task<T> ExecuteJsonAsync<T>(WebView2 webView, string script)
+    private static async Task<T> ExecuteJsonAsync<T>(NativeWebView webView, string script)
     {
-        var raw = await webView.ExecuteScriptAsync(script);
+        var raw = await webView.InvokeScript(script) ?? throw new InvalidOperationException("脚本返回空结果。");
         if (typeof(T) == typeof(string))
         {
             using var doc = JsonDocument.Parse(raw);
@@ -380,11 +374,7 @@ public sealed class BigModelAutomationService
             return (T)(object)doc.RootElement.GetRawText();
         }
 
-        var value = JsonSerializer.Deserialize<T>(raw);
-        if (value is null)
-        {
-            throw new InvalidOperationException("脚本返回空结果。");
-        }
+        var value = JsonSerializer.Deserialize<T>(raw) ?? throw new InvalidOperationException("脚本返回空结果。");
         return value;
     }
 
@@ -467,7 +457,7 @@ public sealed class BigModelAutomationService
             });
         }
 
-        return series.OrderByDescending(item => item.TotalValue).ToList();
+        return [.. series.OrderByDescending(item => item.TotalValue)];
     }
 
     private static ModelUsageSeries? ExtractTotalSeries(ModelUsageApiResponse? response)

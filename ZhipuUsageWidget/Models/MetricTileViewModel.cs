@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 
 namespace ZhipuUsageWidget.Models;
 
@@ -6,7 +6,7 @@ public sealed class MetricTileViewModel
 {
     public string AccentDot { get; init; } = "●";
 
-    public Brush AccentBrush { get; init; } = Brushes.DodgerBlue;
+    public IBrush AccentBrush { get; init; } = Brushes.DodgerBlue;
 
     public string Label { get; init; } = string.Empty;
 

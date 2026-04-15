@@ -1,5 +1,6 @@
-using System.Windows;
-using System.Windows.Media;
+using System.Globalization;
+using Avalonia;
+using Avalonia.Media;
 
 namespace ZhipuUsageWidget.Models;
 
@@ -9,9 +10,9 @@ public sealed class ChartSeriesViewModel
 
     public string DisplayValue { get; init; } = string.Empty;
 
-    public Brush Stroke { get; init; } = Brushes.DodgerBlue;
+    public IBrush Stroke { get; init; } = Brushes.DodgerBlue;
 
-    public PointCollection Points { get; init; } = [];
+    public IList<Point> Points { get; init; } = [];
 
     public Geometry? SmoothPath => Points.Count < 2 ? null : BuildSmoothPath();
 
@@ -26,7 +27,9 @@ public sealed class ChartSeriesViewModel
             if (pts[i].Y > maxY) maxY = pts[i].Y;
         }
 
-        var figure = new PathFigure { StartPoint = pts[0] };
+        // Build path using mini-language: M x,y C cp1x,cp1y cp2x,cp2y x,y ...
+        var sb = new System.Text.StringBuilder();
+        sb.Append(CultureInfo.InvariantCulture, $"M {pts[0].X},{pts[0].Y}");
 
         for (var i = 0; i < pts.Count - 1; i++)
         {
@@ -35,16 +38,14 @@ public sealed class ChartSeriesViewModel
             var p2 = pts[i + 1];
             var p3 = i < pts.Count - 2 ? pts[i + 2] : pts[i + 1];
 
-            var cp1 = new Point(
-                p1.X + (p2.X - p0.X) / 6,
-                Math.Clamp(p1.Y + (p2.Y - p0.Y) / 6, minY, maxY));
-            var cp2 = new Point(
-                p2.X - (p3.X - p1.X) / 6,
-                Math.Clamp(p2.Y - (p3.Y - p1.Y) / 6, minY, maxY));
+            var cp1x = p1.X + (p2.X - p0.X) / 6;
+            var cp1y = Math.Clamp(p1.Y + (p2.Y - p0.Y) / 6, minY, maxY);
+            var cp2x = p2.X - (p3.X - p1.X) / 6;
+            var cp2y = Math.Clamp(p2.Y - (p3.Y - p1.Y) / 6, minY, maxY);
 
-            figure.Segments.Add(new BezierSegment(cp1, cp2, p2, true));
+            sb.Append(CultureInfo.InvariantCulture, $" C {cp1x},{cp1y} {cp2x},{cp2y} {p2.X},{p2.Y}");
         }
 
-        return new PathGeometry { Figures = { figure } };
+        return Geometry.Parse(sb.ToString());
     }
 }
