@@ -23,7 +23,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish ZhipuUsageWidget
+          dotnet publish ZKanban
           --configuration Release
           --runtime win-x64
           --self-contained true
@@ -37,5 +37,5 @@ jobs:
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ZhipuUsageWidget/bin/Release/net10.0-windows/win-x64/publish/ZhipuUsageWidget.exe
+          files: ZKanban/bin/Release/net10.0-windows/win-x64/publish/ZKanban.exe
           generate_release_notes: true

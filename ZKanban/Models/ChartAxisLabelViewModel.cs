@@ -1,0 +1,10 @@
+namespace ZKanban.Models;
+
+public sealed class ChartAxisLabelViewModel
+{
+    public string Text { get; init; } = string.Empty;
+
+    public double Left { get; init; }
+
+    public double Width { get; init; }
+}

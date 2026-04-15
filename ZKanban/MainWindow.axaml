@@ -1,0 +1,290 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:ZKanban.Models"
+        x:Class="ZKanban.MainWindow"
+        Title="智谱用量悬浮组件"
+        Width="450"
+        Height="274"
+        MinWidth="410"
+        MinHeight="0"
+        WindowDecorations="None"
+        CanResize="False"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False"
+        Icon="avares://ZKanban/app.ico"
+        WindowStartupLocation="Manual"
+        Topmost="True">
+    <Window.Resources>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" CornerRadius="10" Background="#CC0B1220" BorderBrush="#46DDE7F2" BorderThickness="1" Padding="6" PointerPressed="RootBorder_PointerPressed">
+        <Grid x:Name="RootGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: tab card header (left) + standalone toolbar buttons (right) -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Tab card header: visually connected to chart body below -->
+                <Border x:Name="CardHeaderBorder" Grid.Column="0" CornerRadius="8,8,0,0" Background="#A6111827" BorderBrush="#22374D" BorderThickness="1,1,1,0">
+                    <StackPanel Orientation="Horizontal" Spacing="1" Margin="6,4">
+                        <StackPanel x:Name="RangeButtonsBorder" Orientation="Horizontal" Spacing="1" Margin="0,0,4,0">
+                            <Button x:Name="TodayRangeButton" Theme="{StaticResource TabHeaderButtonStyle}" Content="今天" Click="TodayRangeButton_Click" />
+                            <Button x:Name="WeekRangeButton" Theme="{StaticResource TabHeaderButtonStyle}" Content="7天" Click="WeekRangeButton_Click" />
+                            <Button x:Name="MonthRangeButton" Theme="{StaticResource TabHeaderButtonStyle}" Content="30天" Click="MonthRangeButton_Click" />
+                            <Button x:Name="Month60RangeButton" Theme="{StaticResource TabHeaderButtonStyle}" Content="60天" Click="Month60RangeButton_Click" />
+                        </StackPanel>
+
+                        <Button x:Name="CurveSelectorButton"
+                                Theme="{StaticResource ToolbarButtonStyle}"
+                                Padding="5"
+                                Margin="0,0,4,0"
+                                Click="CurveSelectorButton_Click">
+                            <Path Data="M 5,3 L 9,7.5 L 5,12"
+                                  Stroke="#E2E8F0"
+                                  StrokeThickness="1.8"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Fill="Transparent"
+                                  Width="14"
+                                  Height="14"
+                                  Stretch="Uniform" />
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="CurveContextMenu" />
+                            </Button.ContextMenu>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Standalone toolbar buttons (NOT part of the card) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Pin / Topmost -->
+                    <Button x:Name="TopmostButton"
+                            Width="26" Height="26"
+                            Click="TopmostButton_Click"
+                            Background="#14304A" BorderBrush="#33536D" BorderThickness="0"
+                            Cursor="Hand" Margin="0,0,3,0">
+                        <Panel Width="14" Height="14">
+                            <!-- Pin head (circle) -->
+                            <Ellipse x:Name="TopmostPinHead"
+                                     Width="6" Height="6"
+                                     Stroke="#F8FAFC" StrokeThickness="1.5"
+                                     Fill="Transparent"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Margin="0,-2,0,0" />
+                            <!-- Pin body (line) -->
+                            <Border x:Name="TopmostPinBody"
+                                    Width="1.5" Height="6"
+                                    Background="#F8FAFC"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="0,5,0,0" />
+                        </Panel>
+                    </Button>
+
+                    <!-- Chart mode (wave line) -->
+                    <Button x:Name="ChartModeButton"
+                            Width="26" Height="26"
+                            Click="ChartModeButton_Click"
+                            Background="#14304A" BorderBrush="#33536D" BorderThickness="0"
+                            Cursor="Hand" Margin="0,0,3,0">
+                        <Path x:Name="ChartModeIcon"
+                              Data="M1,10 C4,2 6,2 8,10 C10,18 12,18 15,10"
+                              Stroke="#94A3B8" StrokeThickness="1.8"
+                              StrokeLineCap="Round"
+                              Fill="Transparent"
+                              Width="14" Height="14"
+                              Stretch="Uniform" />
+                    </Button>
+
+                    <!-- Summary mode (circle) -->
+                    <Button x:Name="SummaryModeButton"
+                            Width="26" Height="26"
+                            Click="SummaryModeButton_Click"
+                            Background="#14304A" BorderBrush="#33536D" BorderThickness="0"
+                            Cursor="Hand" Margin="0,0,3,0">
+                        <Ellipse x:Name="SummaryModeIcon"
+                                 Width="12" Height="12"
+                                 Stroke="#94A3B8" StrokeThickness="1.8"
+                                 Fill="Transparent"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+
+                    <!-- Settings (hamburger menu) -->
+                    <Button x:Name="GearButton"
+                            Width="26" Height="26"
+                            Click="GearButton_Click"
+                            Background="#14304A" BorderBrush="#33536D" BorderThickness="0"
+                            Cursor="Hand" Margin="0,0,3,0">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2.5">
+                            <Border Width="10" Height="1.8" Background="#F8FAFC" CornerRadius="0.9" />
+                            <Border Width="10" Height="1.8" Background="#F8FAFC" CornerRadius="0.9" />
+                            <Border Width="10" Height="1.8" Background="#F8FAFC" CornerRadius="0.9" />
+                        </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="GearContextMenu">
+                                <MenuItem Header="视图">
+                                    <MenuItem Header="曲线图" Click="ChartModeMenuItem_Click" />
+                                    <MenuItem Header="概览" Click="SummaryModeMenuItem_Click" />
+                                </MenuItem>
+                                <MenuItem Header="设置">
+                                    <MenuItem Header="账号与登录" Click="OpenSettingsMenuItem_Click" />
+                                    <MenuItem Header="立即刷新" Click="RefreshMenuItem_Click" />
+                                    <MenuItem x:Name="TopmostMenuItem" Header="窗口置顶" ToggleType="CheckBox" IsChecked="True" Click="TopmostMenuItem_Click" />
+                                </MenuItem>
+                                <Separator Theme="{StaticResource DarkSeparatorStyle}" />
+                                <MenuItem Header="关闭组件" Click="CloseMenuItem_Click" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+
+                    <!-- Expand / Collapse -->
+                    <Button x:Name="ExpandButton"
+                            Width="26" Height="26"
+                            Click="CollapseMenuItem_Click"
+                            Background="#14304A" BorderBrush="#33536D" BorderThickness="0"
+                            Cursor="Hand">
+                        <Panel Width="14" Height="14">
+                            <Border x:Name="MinusIcon"
+                                    Width="10" Height="2.5"
+                                    Background="#F8FAFC"
+                                    CornerRadius="1.25"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            <Border x:Name="CrossIcon1"
+                                    Width="10" Height="2"
+                                    Background="#F8FAFC"
+                                    CornerRadius="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    RenderTransformOrigin="50%,50%"
+                                    IsVisible="False">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="45" />
+                                </Border.RenderTransform>
+                            </Border>
+                            <Border x:Name="CrossIcon2"
+                                    Width="10" Height="2"
+                                    Background="#F8FAFC"
+                                    CornerRadius="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    RenderTransformOrigin="50%,50%"
+                                    IsVisible="False">
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="-45" />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Panel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid x:Name="ChartPanel">
+                    <Border CornerRadius="0,0,8,8" Background="#A6111827" BorderBrush="#22374D" BorderThickness="1,1,1,1" Margin="0,-1,0,0" Padding="4">
+                        <Canvas x:Name="ChartCanvas" Height="148" Background="Transparent" ClipToBounds="False"
+                                PointerMoved="ChartCanvas_PointerMoved" PointerExited="ChartCanvas_PointerLeave">
+                            <!-- Y-axis line -->
+                            <Polyline x:Name="YAxisLine" Points="34,0 34,124" Stroke="#4A6A88" StrokeThickness="1" />
+                            <!-- X-axis line -->
+                            <Polyline x:Name="XAxisLine" Points="34,124 400,124" Stroke="#4A6A88" StrokeThickness="1" />
+                            <!-- Grid lines are rendered directly to ChartCanvas in code -->
+                            <ItemsControl x:Name="SeriesItemsControl">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ChartSeriesViewModel">
+                                        <Path Data="{Binding SmoothPath}" Stroke="{Binding Stroke}" StrokeThickness="2.2" StrokeJoin="Round" StrokeLineCap="Round" Fill="Transparent" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Polyline x:Name="TrackVerticalLine" Points="0,0 0,148" Stroke="#33536D" StrokeThickness="1" StrokeDashArray="3,3" IsVisible="False" />
+                            <ItemsControl x:Name="TrackDotsItemsControl" IsVisible="False" ContainerPrepared="TrackDotsContainerPrepared">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TrackDotViewModel">
+                                        <Ellipse Width="7" Height="7" Stroke="{Binding Stroke}" StrokeThickness="2" Fill="#0F1A2A" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border x:Name="TrackToolTip" IsVisible="False" CornerRadius="6" Background="#1A2744" BorderBrush="#33536D" BorderThickness="1" Padding="8,5">
+                                <StackPanel>
+                                    <TextBlock x:Name="TrackTimeText" Foreground="#94A3B8" FontSize="9" Margin="0,0,0,3" />
+                                    <ItemsControl x:Name="TrackSeriesItemsControl" FontSize="10">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:TrackSeriesItemViewModel">
+                                                <StackPanel Orientation="Horizontal" Margin="0,1">
+                                                    <Ellipse Width="6" Height="6" Fill="{Binding Stroke}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                                    <TextBlock Foreground="#E2E8F0" Text="{Binding Text}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <ItemsControl x:Name="AxisLabelsItemsControl" Canvas.Left="0" Canvas.Top="128" ContainerPrepared="AxisLabelsContainerPrepared">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas Height="18" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ChartAxisLabelViewModel">
+                                        <TextBlock Width="{Binding Width}" Text="{Binding Text}" Foreground="#A8B8CC" FontSize="10" TextAlignment="Center" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Canvas>
+                    </Border>
+                </Grid>
+
+                <Border x:Name="SummaryPanel" IsVisible="False" CornerRadius="0,0,8,8" Background="#A6111827" BorderBrush="#22374D" BorderThickness="1,1,1,1" Margin="0,-1,0,0" Padding="6">
+                    <ItemsControl x:Name="SummaryItemsControl">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:MetricTileViewModel">
+                                <Border Width="90" Margin="0,0,6,6" Padding="7" CornerRadius="8" Background="#17212E" BorderBrush="#263548" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" Foreground="#94A3B8" FontSize="9" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,2,0,0" Text="{Binding Value}" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <TextBlock x:Name="CollapsedHintTextBlock"
+                           IsVisible="False"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           Foreground="#94A3B8"
+                           FontSize="11" />
+            </Grid>
+
+            <NativeWebView x:Name="HiddenWebView" Grid.Row="1" IsVisible="False"
+                           EnvironmentRequested="OnEnvironmentRequested" />
+        </Grid>
+    </Border>
+</Window>

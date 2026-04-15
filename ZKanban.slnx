@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="ZhipuUsageWidget.Tests/ZhipuUsageWidget.Tests.csproj" />
-  <Project Path="ZhipuUsageWidget/ZhipuUsageWidget.csproj" />
+  <Project Path="ZKanban.Tests/ZKanban.Tests.csproj" />
+  <Project Path="ZKanban/ZKanban.csproj" />
 </Solution>

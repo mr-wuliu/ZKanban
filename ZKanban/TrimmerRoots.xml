@@ -1,0 +1,19 @@
+<linker>
+  <!-- Preserve types used via reflection (JSON serialization, bindings) -->
+  <assembly fullname="ZKanban">
+    <type fullname="ZKanban.Models.TrackDotViewModel" preserve="all" />
+    <type fullname="ZKanban.Models.ChartAxisLabelViewModel" preserve="all" />
+    <type fullname="ZKanban.Models.UsageSnapshot" preserve="all" />
+    <type fullname="ZKanban.Models.CredentialSettings" preserve="all" />
+    <type fullname="ZKanban.Models.UsageSeriesPoint" preserve="all" />
+    <type fullname="ZKanban.Models.UsageQuotaMetric" preserve="all" />
+    <type fullname="ZKanban.Models.ModelUsageSeries" preserve="all" />
+    <type fullname="ZKanban.Services.UsageHistoryService+DailyUsageRecord" preserve="all" />
+    <type fullname="ZKanban.Services.LocalSettingsService+PersistedSettings" preserve="all" />
+    <type fullname="ZKanban.Services.BigModelAutomationService+QuotaApiResponse" preserve="all" />
+    <type fullname="ZKanban.Services.BigModelAutomationService+QuotaApiData" preserve="all" />
+    <type fullname="ZKanban.Services.BigModelAutomationService+ModelUsageApiResponse" preserve="all" />
+    <type fullname="ZKanban.Services.BigModelAutomationService+ModelUsageApiData" preserve="all" />
+    <type fullname="ZKanban.Services.BigModelAutomationService+ModelDataItem" preserve="all" />
+  </assembly>
+</linker>

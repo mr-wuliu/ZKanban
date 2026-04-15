@@ -23,7 +23,7 @@ public class Win32 {
     }
 }
 
-$ProjectName = "ZhipuUsageWidget"
+$ProjectName = "ZKanban"
 $ProjectDir = Join-Path $PSScriptRoot $ProjectName
 $ProcessName = $ProjectName
 $BuildDir = Join-Path $PSScriptRoot ".build"

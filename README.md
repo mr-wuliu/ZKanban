@@ -1,6 +1,6 @@
 <div align="center">
 
-# Zhipu Usage Widget
+# ZKanban
 
 **智谱 AI 用量监控桌面悬浮组件**
 
@@ -11,7 +11,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-<img src="docs/display.png" alt="Zhipu Usage Widget Screenshot" width="480">
+<img src="docs/display.png" alt="ZKanban Screenshot" width="480">
 
 </div>
 
@@ -58,7 +58,7 @@
 
 ### 直接下载（推荐）
 
-前往 [Releases](https://github.com/mr-wuliu/ZKanban/releases) 页面下载最新版 `ZhipuUsageWidget.exe`，双击即可运行，无需安装 .NET。
+前往 [Releases](https://github.com/mr-wuliu/ZKanban/releases) 页面下载最新版 `ZKanban.exe`，双击即可运行，无需安装 .NET。
 
 ### 从源码运行
 
@@ -76,7 +76,7 @@ cd ZKanban
 或手动运行：
 
 ```powershell
-cd ZhipuUsageWidget
+cd ZKanban
 dotnet restore
 dotnet run
 ```
@@ -96,7 +96,7 @@ dotnet run
 
 ## ⚙️ 配置说明
 
-所有配置通过 GUI 设置面板管理，存储在 `%AppData%\ZhipuUsageWidget\settings.json`。
+所有配置通过 GUI 设置面板管理，存储在 `%AppData%\ZKanban\settings.json`。
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
@@ -110,10 +110,10 @@ dotnet run
 
 | 数据 | 路径 |
 |------|------|
-| 设置文件 | `%AppData%\ZhipuUsageWidget\settings.json` |
-| 历史缓存 | `%AppData%\ZhipuUsageWidget\history\*.json` |
-| 运行日志 | `%AppData%\ZhipuUsageWidget\widget.log` |
-| WebView2 数据 | `%LocalAppData%\ZhipuUsageWidget\WebView2\` |
+| 设置文件 | `%AppData%\ZKanban\settings.json` |
+| 历史缓存 | `%AppData%\ZKanban\history\*.json` |
+| 运行日志 | `%AppData%\ZKanban\widget.log` |
+| WebView2 数据 | `%LocalAppData%\ZKanban\WebView2\` |
 
 ---
 
@@ -126,7 +126,7 @@ ZKanban/
 │
 ├── .github/workflows/release.yml          # CI：Release 自动打包 exe
 │
-├── ZhipuUsageWidget/                      # 主项目
+├── ZKanban/                      # 主项目
 │   ├── App.xaml                           # 应用入口 + 全局样式
 │   ├── MainWindow.xaml / .cs              # 主窗口（悬浮窗）
 │   ├── SettingsWindow.xaml / .cs          # 设置面板
@@ -146,7 +146,7 @@ ZKanban/
 │       ├── UsageHistoryService.cs         # 历史数据缓存管理
 │       └── WidgetTrace.cs                 # 轻量日志
 │
-└── ZhipuUsageWidget.Tests/               # 单元测试
+└── ZKanban.Tests/               # 单元测试
     └── ChartLayoutTests.cs               # 图表布局计算测试
 ```
 
@@ -179,15 +179,15 @@ ZKanban/
 
 ```powershell
 # 运行测试
-cd ZhipuUsageWidget.Tests
+cd ZKanban.Tests
 dotnet test
 
 # 发布 Release 版本（self-contained 单文件 exe）
-cd ZhipuUsageWidget
+cd ZKanban
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
-发布输出位于 `ZhipuUsageWidget\bin\Release\net10.0-windows\win-x64\publish\`。
+发布输出位于 `ZKanban\bin\Release\net10.0-windows\win-x64\publish\`。
 推送到 GitHub 后通过 Release 自动打包，详见 `.github/workflows/release.yml`。
 
 ---
