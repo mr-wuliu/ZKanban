@@ -1,0 +1,496 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ZhipuUsageWidget.App">
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="avares://ZhipuUsageWidget/app.ico"
+                       ToolTipText="智谱用量悬浮组件"
+                       Clicked="TrayIcon_Clicked">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="显示/隐藏" Click="OnTrayShowHide" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="退出" Click="OnTrayExit" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+    <Application.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#132234" />
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#27445C" />
+        <SolidColorBrush x:Key="PanelForegroundBrush" Color="#E2E8F0" />
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- ==================== TextBox ==================== -->
+        <Style Selector="TextBox">
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Background" Value="#132234" />
+            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <Panel>
+                            <TextBlock x:Name="PART_Watermark"
+                                       Foreground="#4A6A88"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Text="{TemplateBinding Watermark}" />
+                            <TextPresenter x:Name="PART_TextPresenter"
+                                           Text="{TemplateBinding Text, Mode=TwoWay}"
+                                           PasswordChar="{TemplateBinding PasswordChar}"
+                                           Background="Transparent"
+                                           SelectionBrush="{TemplateBinding SelectionBrush}"
+                                           SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                           CaretBrush="{TemplateBinding CaretBrush}"
+                                           CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                                           TextAlignment="{TemplateBinding TextAlignment}"
+                                           TextWrapping="{TemplateBinding TextWrapping}"
+                                           VerticalAlignment="Center" />
+                        </Panel>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#Bd">
+            <Setter Property="BorderBrush" Value="#3B82F6" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#Bd">
+            <Setter Property="BorderBrush" Value="#33536D" />
+        </Style>
+
+        <!-- ==================== CheckBox ==================== -->
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <!-- ==================== ContextMenu ==================== -->
+        <Style Selector="ContextMenu">
+            <Setter Property="Background" Value="#0F1A2A" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border x:Name="MenuBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="#33536D"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="4">
+                        <ItemsPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- ==================== Separator (implicit) ==================== -->
+        <Style Selector="Separator">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="Background" Value="#22374D" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Separator">
+                    <Border Background="{TemplateBinding Background}"
+                            Height="{TemplateBinding Height}" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- ==================== MenuItem shared hover/checked ==================== -->
+        <Style Selector="MenuItem:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="#1C3650" />
+        </Style>
+        <Style Selector="MenuItem:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="#152A40" />
+        </Style>
+
+        <!-- ==================== MenuItem (implicit) ==================== -->
+        <Style Selector="MenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Path x:Name="CheckMark"
+                                  Grid.Column="0"
+                                  Data="M 0,5 L 3,9 L 9,1"
+                                  Stroke="#67A6FF"
+                                  StrokeThickness="2"
+                                  IsVisible="{TemplateBinding IsChecked}"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,6,0" />
+                            <ContentPresenter Grid.Column="1"
+                                              Content="{TemplateBinding Header}"
+                                              VerticalAlignment="Center" />
+                            <Path x:Name="Arrow"
+                                  Grid.Column="2"
+                                  Data="M 0 0 L 4 4 L 8 0 Z"
+                                  Fill="#94A3B8"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  IsVisible="False" />
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Right"
+                                   IsOpen="{TemplateBinding IsSubMenuOpen}">
+                                <Border Background="#0F1A2A"
+                                        BorderBrush="#33536D"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="4">
+                                    <ItemsPresenter />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- ==================== MenuFlyoutPresenter (tray icon menu - light theme) ==================== -->
+        <Style Selector="MenuFlyoutPresenter">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="MenuFlyoutPresenter">
+                    <Border Background="White"
+                            BorderBrush="#D0D0D0"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="4"
+                            BoxShadow="0 4 12 0 #40000000">
+                        <ItemsPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="MenuFlyoutPresenter MenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#1A1A1A" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="4">
+                        <ContentPresenter Content="{TemplateBinding Header}"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="MenuFlyoutPresenter MenuItem:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="#F0F0F0" />
+        </Style>
+        <Style Selector="MenuFlyoutPresenter MenuItem:pressed /template/ Border#Bd">
+            <Setter Property="Background" Value="#E0E0E0" />
+        </Style>
+        <Style Selector="MenuFlyoutPresenter Separator">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="Background" Value="#E0E0E0" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Separator">
+                    <Border Background="{TemplateBinding Background}"
+                            Height="{TemplateBinding Height}" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- ==================== ScrollBar (vertical default) ==================== -->
+        <Style Selector="ScrollBar">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="ScrollBar">
+                    <Border Background="Transparent" Padding="2,0">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="#3B5575" CornerRadius="4" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ScrollBar[Orientation=Horizontal]">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="ScrollBar">
+                    <Border Background="Transparent" Padding="0,2">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="#3B5575" CornerRadius="4" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+    </Application.Styles>
+
+    <Application.Resources>
+        <!-- ==================== Keyed ControlThemes ==================== -->
+        <ControlTheme x:Key="DarkSeparatorStyle" TargetType="Separator">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="4,3" />
+            <Setter Property="Background" Value="#22374D" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Separator">
+                    <Border Background="{TemplateBinding Background}"
+                            Height="{TemplateBinding Height}" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+
+        <ControlTheme x:Key="DarkMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Path x:Name="CheckMark"
+                                  Grid.Column="0"
+                                  Data="M 0,5 L 3,9 L 9,1"
+                                  Stroke="#67A6FF"
+                                  StrokeThickness="2"
+                                  IsVisible="{TemplateBinding IsChecked}"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,6,0" />
+                            <ContentPresenter Grid.Column="1"
+                                              Content="{TemplateBinding Header}"
+                                              VerticalAlignment="Center" />
+                            <Path x:Name="Arrow"
+                                  Grid.Column="2"
+                                  Data="M 0 0 L 4 4 L 8 0 Z"
+                                  Fill="#94A3B8"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0" />
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Right"
+                                   IsOpen="{TemplateBinding IsSubMenuOpen}">
+                                <Border Background="#0F1A2A"
+                                        BorderBrush="#33536D"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="4">
+                                    <ItemsPresenter />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+
+        <ControlTheme x:Key="TabButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="#1C3650" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Bd">
+                <Setter Property="Background" Value="#214867" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="TabHeaderButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,2" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="0"
+                            CornerRadius="6,6,0,0"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="#1C3650" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Bd">
+                <Setter Property="Background" Value="#214867" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Background" Value="#132234" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="#1C3650" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Bd">
+                <Setter Property="Background" Value="#214867" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="GhostButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Background" Value="#132234" />
+            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="#1C3650" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Bd">
+                <Setter Property="Background" Value="#214867" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="BorderBrush" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="#3B82F6" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Bd">
+                <Setter Property="Background" Value="#1D4ED8" />
+            </Style>
+        </ControlTheme>
+
+    </Application.Resources>
+</Application>
