@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Input;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 using ZhipuUsageWidget.Models;
 using ZhipuUsageWidget.Services;
 
@@ -10,6 +13,7 @@ public partial class SettingsWindow : Window
 {
     private readonly BigModelAutomationService _automationService;
     private readonly ObservableCollection<ModelVisibilityOption> _modelOptions = [];
+    private readonly TextBox _passwordTextBox;
 
     public CredentialSettings Settings { get; }
 
@@ -17,16 +21,17 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         _automationService = automationService;
+        _passwordTextBox = this.FindControl<TextBox>("PasswordTextBox") ?? throw new InvalidOperationException("PasswordTextBox not found");
         Settings = currentSettings.Clone();
         UsernameTextBox.Text = Settings.Username;
-        PasswordTextBox.Password = Settings.Password;
+        _passwordTextBox.Text = Settings.Password;
         RefreshIntervalTextBox.Text = Settings.RefreshIntervalMinutes.ToString();
         AutoLoginCheckBox.IsChecked = Settings.AutoLogin;
         ModelOptionsItemsControl.ItemsSource = _modelOptions;
         Loaded += SettingsWindow_Loaded;
     }
 
-    private async void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void SettingsWindow_Loaded(object? sender, RoutedEventArgs e)
     {
         await RefreshLoginStatusAsync();
         await LoadModelOptionsAsync();
@@ -34,15 +39,15 @@ public partial class SettingsWindow : Window
 
     private void ApplyValues()
     {
-        Settings.Username = UsernameTextBox.Text.Trim();
-        Settings.Password = PasswordTextBox.Password;
+        Settings.Username = UsernameTextBox.Text?.Trim() ?? string.Empty;
+        Settings.Password = _passwordTextBox.Text ?? string.Empty;
         Settings.AutoLogin = AutoLoginCheckBox.IsChecked == true;
         if (int.TryParse(RefreshIntervalTextBox.Text, out var minutes))
         {
             Settings.RefreshIntervalMinutes = minutes;
         }
 
-        Settings.SelectedModels = _modelOptions.Where(item => item.IsSelected).Select(item => item.Label).ToList();
+        Settings.SelectedModels = [.. _modelOptions.Where(item => item.IsSelected).Select(item => item.Label)];
     }
 
     private async Task LoadModelOptionsAsync()
@@ -90,39 +95,40 @@ public partial class SettingsWindow : Window
         try
         {
             var probeWindow = CreateProbeWindow(out var hiddenWebView);
-            var state = await _automationService.GetLoginStateAsync(hiddenWebView, Settings, Settings.AutoLogin, CancellationToken.None);
+            var state = await BigModelAutomationService.GetLoginStateAsync(hiddenWebView, Settings, Settings.AutoLogin, CancellationToken.None);
             LoginStatusTextBlock.Text = state.IsLoggedIn ? "已登录" : "未登录";
             probeWindow.Close();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             LoginStatusTextBlock.Text = "检查失败";
         }
     }
 
-    private static Window CreateProbeWindow(out Microsoft.Web.WebView2.Wpf.WebView2 hiddenWebView)
+    private static Window CreateProbeWindow(out NativeWebView hiddenWebView)
     {
         var probeWindow = new Window
         {
             Width = 1,
             Height = 1,
-            WindowStyle = WindowStyle.None,
+            WindowDecorations = WindowDecorations.None,
             ShowInTaskbar = false,
-            AllowsTransparency = true,
-            Background = System.Windows.Media.Brushes.Transparent,
+            TransparencyLevelHint = [WindowTransparencyLevel.Transparent],
+            Background = Brushes.Transparent,
         };
-        hiddenWebView = new Microsoft.Web.WebView2.Wpf.WebView2();
+        hiddenWebView = new NativeWebView();
+        hiddenWebView.EnvironmentRequested += BigModelAutomationService.ConfigureWebViewEnvironment;
         probeWindow.Content = hiddenWebView;
         probeWindow.Show();
         return probeWindow;
     }
 
-    private async void CheckStatusButton_Click(object sender, RoutedEventArgs e)
+    private async void CheckStatusButton_Click(object? sender, RoutedEventArgs e)
     {
         await RefreshLoginStatusAsync();
     }
 
-    private async void LogoutButton_Click(object sender, RoutedEventArgs e)
+    private async void LogoutButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -133,35 +139,33 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "清空登录态失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await SimpleMessageBox.ShowAsync(this, ex.Message, "清空登录态失败");
         }
     }
 
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    private async void SaveButton_Click(object? sender, RoutedEventArgs e)
     {
         if (!int.TryParse(RefreshIntervalTextBox.Text, out var interval) || interval is < 1 or > 240)
         {
-            MessageBox.Show(this, "刷新间隔必须是 1 到 240 之间的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await SimpleMessageBox.ShowAsync(this, "刷新间隔必须是 1 到 240 之间的整数。", "提示");
             return;
         }
 
         ApplyValues();
         Settings.RefreshIntervalMinutes = interval;
-        DialogResult = true;
-        Close();
+        Close(true);
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        Close(false);
     }
 
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed)
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
-            DragMove();
+            BeginMoveDrag(e);
         }
     }
 }
