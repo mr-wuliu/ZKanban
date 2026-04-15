@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("start", "stop", "restart", "status", "publish")]
+    [ValidateSet("start", "stop", "restart", "status", "publish", "pack")]
     [string]$Action = "start"
 )
 
@@ -140,11 +140,26 @@ function Show-Status {
 }
 
 function Publish-App {
-    $outDir = Join-Path $BuildDir "publish"
-    Write-Host "[$ProjectName] Publishing to $outDir ..." -ForegroundColor Cyan
-    dotnet publish $ProjectDir -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $outDir
+    $outDir = Join-Path $PSScriptRoot "publish"
+    Write-Host "[$ProjectName] Publishing (optimized self-contained) to $outDir ..." -ForegroundColor Cyan
+    dotnet publish $ProjectDir -c Release -r win-x64 --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:DebugType=none `
+        -p:PublishTrimmed=true `
+        -p:TrimMode=partial `
+        -p:EnableCompressionInSingleFile=true `
+        -p:StripSymbols=true `
+        -o $outDir 2>&1 | ForEach-Object {
+            if ($_ -match 'error\b') { Write-Host $_ -ForegroundColor Red }
+            elseif ($_ -match 'warning\b') { Write-Host $_ -ForegroundColor DarkGray }
+        }
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "[$ProjectName] Published: $outDir\$ProjectName.exe" -ForegroundColor Green
+        # Remove NuGet package PDBs (not needed for distribution)
+        Get-ChildItem $outDir -Filter *.pdb | Remove-Item -Force
+        $exePath = Join-Path $outDir "$ProjectName.exe"
+        $sizeMB = [math]::Round((Get-Item $exePath).Length / 1MB, 1)
+        Write-Host "[$ProjectName] Published: $exePath ($sizeMB MB)" -ForegroundColor Green
     } else {
         Write-Host "[$ProjectName] Publish failed." -ForegroundColor Red
     }
@@ -156,4 +171,5 @@ switch ($Action) {
     "restart" { Stop-App; Start-App }
     "status"  { Show-Status }
     "publish" { Publish-App }
+    "pack"    { Publish-App }
 }
