@@ -60,7 +60,7 @@
 
                     <TextBlock Margin="0,0,0,2" Text="刷新间隔（分钟）" Foreground="#CBD5E1" FontSize="12" />
                     <TextBox x:Name="RefreshIntervalTextBox" />
-                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,4,0,0" Content="允许自动登录" FontSize="12" />
+                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,4,0,0" Content="允许自动登录" FontSize="12" Foreground="#CBD5E1" />
 
                     <TextBlock Margin="0,8,0,4" Text="展示模型" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
                     <Border Theme="{StaticResource GlassPanelStyle}" Padding="8">
@@ -69,7 +69,7 @@
                             <ItemsControl x:Name="ModelOptionsItemsControl" Margin="0,4,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:ModelVisibilityOption">
-                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,0,2" FontSize="12" />
+                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,0,2" FontSize="12" Foreground="#CBD5E1" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
