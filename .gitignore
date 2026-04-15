@@ -19,7 +19,13 @@ run-output.txt
 !docs/*.png
 !docs/**/*.png
 
-## Temp tooling directories
+## Publish outputs
+publish/
+publish-opt/
+publish-aot/
+
+## Temp directories
+%TEMP%/
 .tmp-playwright/
 
 ## Secrets and generated config
