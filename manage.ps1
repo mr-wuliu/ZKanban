@@ -56,7 +56,7 @@ function Test-SourceChanged {
     }
 
     $exeTime = (Get-Item $exePath).LastWriteTimeUtc
-    $srcFiles = Get-ChildItem -Path $ProjectDir -Include *.cs, *.xaml, *.csproj, *.slnx -Recurse -File -ErrorAction SilentlyContinue |
+    $srcFiles = Get-ChildItem -Path $ProjectDir -Include *.cs, *.xaml, *.axaml, *.csproj, *.slnx -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
 
     if (-not $srcFiles) { return $false }
