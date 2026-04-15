@@ -1,6 +1,7 @@
 ## Build outputs
 bin/
 obj/
+.build/
 .vs/
 *.user
 *.suo
@@ -10,22 +11,12 @@ obj/
 ## Logs
 *.log
 
-## Runtime output (may contain sensitive error details)
-run-error.txt
-run-output.txt
-
 ## Screenshots (may contain UI with sensitive data)
 *.png
 !docs/*.png
 !docs/**/*.png
 
-## Publish outputs
-publish/
-publish-opt/
-publish-aot/
-
 ## Temp directories
-%TEMP%/
 .tmp-playwright/
 
 ## Secrets and generated config

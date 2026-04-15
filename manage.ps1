@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("start", "stop", "restart", "status")]
+    [ValidateSet("start", "stop", "restart", "status", "publish")]
     [string]$Action = "start"
 )
 
@@ -26,6 +26,8 @@ public class Win32 {
 $ProjectName = "ZhipuUsageWidget"
 $ProjectDir = Join-Path $PSScriptRoot $ProjectName
 $ProcessName = $ProjectName
+$BuildDir = Join-Path $PSScriptRoot ".build"
+$LogDir = Join-Path $BuildDir "logs"
 
 function Get-AppProcess {
     return Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
@@ -76,7 +78,9 @@ function Start-App {
     $exePath = Get-AppExePath
     if (Test-SourceChanged) {
         Write-Host "[$ProjectName] Source changed, rebuilding..." -ForegroundColor Cyan
-        dotnet build $ProjectDir --configuration Debug -v quiet 2>$null
+        $logFile = Join-Path $LogDir "build-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+        New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+        dotnet build $ProjectDir --configuration Debug -v quiet 2>&1 | Out-File -FilePath $logFile -Encoding UTF8
         $exePath = Get-AppExePath
     }
 
@@ -135,9 +139,21 @@ function Show-Status {
     }
 }
 
+function Publish-App {
+    $outDir = Join-Path $BuildDir "publish"
+    Write-Host "[$ProjectName] Publishing to $outDir ..." -ForegroundColor Cyan
+    dotnet publish $ProjectDir -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $outDir
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[$ProjectName] Published: $outDir\$ProjectName.exe" -ForegroundColor Green
+    } else {
+        Write-Host "[$ProjectName] Publish failed." -ForegroundColor Red
+    }
+}
+
 switch ($Action) {
     "start"   { Start-App }
     "stop"    { Stop-App }
     "restart" { Stop-App; Start-App }
     "status"  { Show-Status }
+    "publish" { Publish-App }
 }
