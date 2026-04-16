@@ -1,6 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:models="using:ZKanban.Models"
         x:Class="ZKanban.SettingsWindow"
         Title="设置"
         Width="320"
@@ -14,7 +13,7 @@
     <Window.Resources>
     </Window.Resources>
 
-    <Border CornerRadius="14" Background="#101826" BorderBrush="#27445C" BorderThickness="1" Padding="8">
+    <Border CornerRadius="14" Background="{DynamicResource ThemeBgDeepBrush}" BorderBrush="{DynamicResource ThemeBorderDefaultBrush}" BorderThickness="1" Padding="8">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -27,7 +26,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="设置" FontSize="18" FontWeight="SemiBold" Foreground="#F8FAFC" VerticalAlignment="Center" />
+                <TextBlock Text="设置" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" VerticalAlignment="Center" />
                 <Button x:Name="CloseTitleButton"
                         Grid.Column="1"
                         Width="24"
@@ -35,7 +34,7 @@
                         Click="CancelButton_Click"
                         Content="✕"
                         FontSize="11"
-                        Foreground="#94A3B8"
+                        Foreground="{DynamicResource ThemeTextSecondaryBrush}"
                         Background="Transparent"
                         BorderThickness="0"
                         Cursor="Hand"
@@ -47,36 +46,22 @@
                 <StackPanel Margin="0,0,0,4">
                     <Border Theme="{StaticResource GlassPanelStyle}" Margin="0,0,0,6" Padding="8">
                         <StackPanel>
-                            <TextBlock Text="登录状态" Foreground="#94A3B8" FontSize="11" />
-                            <TextBlock x:Name="LoginStatusTextBlock" Margin="0,2,0,0" FontSize="14" FontWeight="SemiBold" Foreground="#F8FAFC" />
+                            <TextBlock Text="登录状态" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="11" />
+                            <TextBlock x:Name="LoginStatusTextBlock" Margin="0,2,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" />
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Margin="0,0,0,2" Text="账号" Foreground="#CBD5E1" FontSize="12" />
+                    <TextBlock Margin="0,0,0,2" Text="账号" Foreground="{DynamicResource ThemeTextLabelBrush}" FontSize="12" />
                     <TextBox x:Name="UsernameTextBox" Margin="0,0,0,6" />
 
-                    <TextBlock Margin="0,0,0,2" Text="密码" Foreground="#CBD5E1" FontSize="12" />
+                    <TextBlock Margin="0,0,0,2" Text="密码" Foreground="{DynamicResource ThemeTextLabelBrush}" FontSize="12" />
                     <TextBox x:Name="PasswordTextBox" Margin="0,0,0,6" PasswordChar="●" />
 
-                    <TextBlock Margin="0,0,0,2" Text="刷新间隔（分钟）" Foreground="#CBD5E1" FontSize="12" />
+                    <TextBlock Margin="0,0,0,2" Text="刷新间隔（分钟）" Foreground="{DynamicResource ThemeTextLabelBrush}" FontSize="12" />
                     <TextBox x:Name="RefreshIntervalTextBox" />
-                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,4,0,0" Content="允许自动登录" FontSize="12" Foreground="#CBD5E1" />
+                    <CheckBox x:Name="AutoLoginCheckBox" Margin="0,4,0,0" Content="允许自动登录" FontSize="12" Foreground="{DynamicResource ThemeTextLabelBrush}" />
 
-                    <TextBlock Margin="0,8,0,4" Text="展示模型" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
-                    <Border Theme="{StaticResource GlassPanelStyle}" Padding="8">
-                        <StackPanel>
-                            <TextBlock Foreground="#94A3B8" FontSize="11" Text="勾选后作为默认曲线和概览数据来源。" TextWrapping="Wrap" />
-                            <ItemsControl x:Name="ModelOptionsItemsControl" Margin="0,4,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:ModelVisibilityOption">
-                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,0,2" FontSize="12" Foreground="#CBD5E1" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-
-                    <TextBlock Margin="0,8,0,4" Text="登录操作" Foreground="#E2E8F0" FontWeight="SemiBold" FontSize="12" />
+                    <TextBlock Margin="0,8,0,4" Text="登录操作" Foreground="{DynamicResource ThemeTextContentBrush}" FontWeight="SemiBold" FontSize="12" />
                     <StackPanel Orientation="Horizontal">
                         <Button Theme="{StaticResource GhostButtonStyle}" Content="检查登录状态" Click="CheckStatusButton_Click" Margin="0,0,6,0" FontSize="12" />
                         <Button Theme="{StaticResource GhostButtonStyle}" Content="清空登录态" Click="LogoutButton_Click" FontSize="12" />

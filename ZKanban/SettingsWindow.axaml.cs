@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -12,7 +10,6 @@ namespace ZKanban;
 public partial class SettingsWindow : Window
 {
     private readonly BigModelAutomationService _automationService;
-    private readonly ObservableCollection<ModelVisibilityOption> _modelOptions = [];
     private readonly TextBox _passwordTextBox;
 
     public CredentialSettings Settings { get; }
@@ -27,14 +24,12 @@ public partial class SettingsWindow : Window
         _passwordTextBox.Text = Settings.Password;
         RefreshIntervalTextBox.Text = Settings.RefreshIntervalMinutes.ToString();
         AutoLoginCheckBox.IsChecked = Settings.AutoLogin;
-        ModelOptionsItemsControl.ItemsSource = _modelOptions;
         Loaded += SettingsWindow_Loaded;
     }
 
     private async void SettingsWindow_Loaded(object? sender, RoutedEventArgs e)
     {
         await RefreshLoginStatusAsync();
-        await LoadModelOptionsAsync();
     }
 
     private void ApplyValues()
@@ -45,46 +40,6 @@ public partial class SettingsWindow : Window
         if (int.TryParse(RefreshIntervalTextBox.Text, out var minutes))
         {
             Settings.RefreshIntervalMinutes = minutes;
-        }
-
-        Settings.SelectedModels = [.. _modelOptions.Where(item => item.IsSelected).Select(item => item.Label)];
-    }
-
-    private async Task LoadModelOptionsAsync()
-    {
-        ApplyValues();
-        try
-        {
-            var probeWindow = CreateProbeWindow(out var hiddenWebView);
-            var availableModels = await _automationService.FetchAvailableModelsAsync(hiddenWebView, Settings, CancellationToken.None);
-            probeWindow.Close();
-
-            var selected = Settings.SelectedModels.Count > 0 ? Settings.SelectedModels : availableModels;
-            _modelOptions.Clear();
-            foreach (var model in availableModels.Distinct())
-            {
-                _modelOptions.Add(new ModelVisibilityOption
-                {
-                    Label = model,
-                    IsSelected = selected.Contains(model),
-                });
-            }
-        }
-        catch
-        {
-            if (_modelOptions.Count > 0)
-            {
-                return;
-            }
-
-            foreach (var model in Settings.SelectedModels.Distinct())
-            {
-                _modelOptions.Add(new ModelVisibilityOption
-                {
-                    Label = model,
-                    IsSelected = true,
-                });
-            }
         }
     }
 
