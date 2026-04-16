@@ -46,6 +46,7 @@ public sealed class LocalSettingsService
             AutoLogin = persisted.AutoLogin,
             RangeDays = persisted.RangeDays is 1 or 7 or 30 or 60 ? persisted.RangeDays : 7,
             IsCollapsed = persisted.IsCollapsed,
+            Theme = persisted.Theme is "ocean" or "coffee" ? persisted.Theme : "ocean",
             SelectedModels = persisted.SelectedModels?.Count > 0
                 ? [.. persisted.SelectedModels]
                 : CredentialSettings.CreateDefault().SelectedModels,
@@ -62,6 +63,7 @@ public sealed class LocalSettingsService
             AutoLogin = settings.AutoLogin,
             RangeDays = settings.RangeDays,
             IsCollapsed = settings.IsCollapsed,
+            Theme = settings.Theme,
             SelectedModels = [.. settings.SelectedModels],
         };
 
@@ -79,6 +81,23 @@ public sealed class LocalSettingsService
         var bytes = Encoding.UTF8.GetBytes(plainText);
         var encrypted = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
         return Convert.ToBase64String(encrypted);
+    }
+
+    public static string LoadThemeNameSync()
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "ZKanban", "settings.json");
+            if (!File.Exists(path)) return "ocean";
+            var json = File.ReadAllText(path);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("Theme", out var el)
+                ? el.GetString() ?? "ocean"
+                : "ocean";
+        }
+        catch { return "ocean"; }
     }
 
     private static string Decrypt(string? protectedText)
@@ -117,6 +136,8 @@ public sealed class LocalSettingsService
         public DateTime? CustomRangeEnd { get; set; }
 
         public bool IsCollapsed { get; set; }
+
+        public string Theme { get; set; } = "ocean";
 
         public List<string>? SelectedModels { get; set; }
     }

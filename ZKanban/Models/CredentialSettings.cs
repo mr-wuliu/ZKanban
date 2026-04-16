@@ -24,6 +24,8 @@ public sealed class CredentialSettings
 
     public bool IsCollapsed { get; set; }
 
+    public string Theme { get; set; } = "ocean";
+
     public List<string> SelectedModels { get; set; } = [.. DefaultModels];
 
     public static CredentialSettings CreateDefault() => new();
@@ -38,6 +40,7 @@ public sealed class CredentialSettings
             AutoLogin = AutoLogin,
             RangeDays = RangeDays,
             IsCollapsed = IsCollapsed,
+            Theme = Theme,
             SelectedModels = [.. SelectedModels],
         };
     }
