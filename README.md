@@ -7,7 +7,7 @@
 实时追踪你的智谱 API 用量 — 曲线图、配额提醒、多模型对比，一目了然。
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![WPF](https://img.shields.io/badge/WPF-WebView2-0078D4?logo=microsoft)](https://learn.microsoft.com/dotnet/desktop/wpf/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-12.0-573BE7?logo=avalonia)](https://avaloniaui.net/)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -90,6 +90,7 @@ dotnet run
 .\manage.ps1 stop      # 停止
 .\manage.ps1 restart   # 重启
 .\manage.ps1 status    # 查看运行状态
+.\manage.ps1 publish   # 发布 Release 单文件 exe
 ```
 
 ---
@@ -122,23 +123,35 @@ dotnet run
 ```
 ZKanban/
 ├── ZKanban.slnx                           # 解决方案文件
-├── manage.ps1                             # 管理脚本（启动/停止/重启）
+├── manage.ps1                             # 管理脚本（启动/停止/重启/发布）
 │
-├── .github/workflows/release.yml          # CI：Release 自动打包 exe
+├── .github/workflows/
+│   ├── ci.yml                             # CI：PR/push 自动构建和测试
+│   └── release.yml                        # Release 自动打包 exe
 │
 ├── ZKanban/                      # 主项目
-│   ├── App.xaml                           # 应用入口 + 全局样式
-│   ├── MainWindow.xaml / .cs              # 主窗口（悬浮窗）
-│   ├── SettingsWindow.xaml / .cs          # 设置面板
-│   ├── app.ico                           # 应用图标
+│   ├── App.axaml                          # 应用入口 + 全局样式
+│   ├── App.axaml.cs                       # 应用启动逻辑
+│   ├── Program.cs                         # 程序入口
+│   ├── MainWindow.axaml / .cs             # 主窗口（悬浮窗）
+│   ├── SettingsWindow.axaml / .cs         # 设置面板
+│   ├── SimpleMessageBox.cs                # 轻量消息框
+│   ├── app.ico                            # 应用图标
 │   │
 │   ├── Models/                            # 数据模型
 │   │   ├── ChartLayoutHelper.cs           # 图表布局计算引擎
+│   │   ├── ChartAxisLabelViewModel.cs     # 坐标轴标签
+│   │   ├── ChartGridLineViewModel.cs      # 网格线
+│   │   ├── ChartSeriesViewModel.cs        # 曲线系列
+│   │   ├── TrackDotViewModel.cs           # 悬浮追踪点
 │   │   ├── UsageSnapshot.cs               # 用量快照数据
+│   │   ├── UsageSeriesPoint.cs            # 用量曲线数据点
 │   │   ├── UsageQuotaMetric.cs            # 配额指标
 │   │   ├── ModelUsageSeries.cs            # 模型用量曲线
+│   │   ├── ModelVisibilityOption.cs       # 模型可见性选项
 │   │   ├── MetricTileViewModel.cs         # 概览卡片 VM
-│   │   └── ...                            # 其他辅助模型
+│   │   ├── CredentialSettings.cs          # 凭据设置模型
+│   │   └── LoginStateInfo.cs              # 登录状态信息
 │   │
 │   └── Services/                          # 核心服务
 │       ├── BigModelAutomationService.cs   # WebView2 自动化（登录 + 数据抓取）
@@ -156,13 +169,13 @@ ZKanban/
 
 | 层级 | 技术 |
 |------|------|
-| 框架 | WPF on .NET 10 |
-| 浏览器内核 | Microsoft Edge WebView2 |
+| 框架 | Avalonia UI 12 on .NET 10 |
+| 浏览器内核 | Avalonia.Controls.WebView（WebView2） |
 | 数据来源 | bigmodel.cn 官方 API（通过 WebView2 代理请求） |
 | 凭据保护 | Windows DPAPI（CurrentUser 作用域） |
 | 数据序列化 | System.Text.Json |
 | 测试 | xUnit |
-| UI 风格 | 自定义暗色毛玻璃主题（无第三方 UI 库） |
+| CI/CD | GitHub Actions（自动构建、测试、Release 打包） |
 
 ---
 
@@ -183,12 +196,16 @@ cd ZKanban.Tests
 dotnet test
 
 # 发布 Release 版本（self-contained 单文件 exe）
+.\manage.ps1 publish
+
+# 或手动发布
 cd ZKanban
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
-发布输出位于 `ZKanban\bin\Release\net10.0-windows\win-x64\publish\`。
+发布输出位于 `publish\` 目录。
 推送到 GitHub 后通过 Release 自动打包，详见 `.github/workflows/release.yml`。
+CI 在每次 push/PR 时自动运行构建和测试，详见 `.github/workflows/ci.yml`。
 
 ---
 
