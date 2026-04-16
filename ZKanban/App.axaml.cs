@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using ZKanban.Services;
 
 namespace ZKanban;
 
@@ -14,6 +15,13 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Force dark variant so FluentTheme controls use light foreground
+        RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+
+        // Apply saved theme BEFORE creating window
+        var themeName = LocalSettingsService.LoadThemeNameSync();
+        ThemeManager.ApplyTheme(themeName);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow();

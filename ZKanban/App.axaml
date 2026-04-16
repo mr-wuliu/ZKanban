@@ -17,6 +17,43 @@
         </TrayIcons>
     </TrayIcon.Icons>
     <Application.Resources>
+        <!-- Theme brush resources (Ocean defaults, overridden at runtime by ThemeManager) -->
+        <!-- Backgrounds -->
+        <SolidColorBrush x:Key="ThemeBgDeepBrush" Color="#0F1A2A" />
+        <SolidColorBrush x:Key="ThemeBgBaseBrush" Color="#132234" />
+        <SolidColorBrush x:Key="ThemeBgSurfaceBrush" Color="#17212E" />
+        <SolidColorBrush x:Key="ThemeBgElevatedBrush" Color="#1A2744" />
+        <SolidColorBrush x:Key="ThemeBgToolbarBrush" Color="#14304A" />
+        <!-- Borders -->
+        <SolidColorBrush x:Key="ThemeBorderDefaultBrush" Color="#27445C" />
+        <SolidColorBrush x:Key="ThemeBorderLightBrush" Color="#33536D" />
+        <SolidColorBrush x:Key="ThemeBorderSubtleBrush" Color="#22374D" />
+        <SolidColorBrush x:Key="ThemeBorderTileBrush" Color="#263548" />
+        <!-- Text -->
+        <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="ThemeTextContentBrush" Color="#E2E8F0" />
+        <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#94A3B8" />
+        <SolidColorBrush x:Key="ThemeTextLabelBrush" Color="#CBD5E1" />
+        <SolidColorBrush x:Key="ThemeTextMutedBrush" Color="#A8B8CC" />
+        <SolidColorBrush x:Key="ThemeTextDimBrush" Color="#4A6A88" />
+        <!-- Interactive States -->
+        <SolidColorBrush x:Key="ThemeHoverBgBrush" Color="#1C3650" />
+        <SolidColorBrush x:Key="ThemePressedBgBrush" Color="#214867" />
+        <SolidColorBrush x:Key="ThemeCheckedBgBrush" Color="#152A40" />
+        <!-- Accent -->
+        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#3B82F6" />
+        <SolidColorBrush x:Key="ThemeAccentDeepBrush" Color="#2563EB" />
+        <SolidColorBrush x:Key="ThemeAccentBrightBrush" Color="#67A6FF" />
+        <SolidColorBrush x:Key="ThemeAccentPressedBrush" Color="#1D4ED8" />
+        <!-- Chart -->
+        <SolidColorBrush x:Key="ThemeGridLineBrush" Color="#2A3E54" />
+        <SolidColorBrush x:Key="ThemeAxisLineBrush" Color="#4A6A88" />
+        <SolidColorBrush x:Key="ThemeScrollbarBrush" Color="#3B5575" />
+        <!-- Semi-transparent Overlays -->
+        <SolidColorBrush x:Key="ThemeRootBgBrush" Color="#CC0B1220" />
+        <SolidColorBrush x:Key="ThemeRootBorderBrush" Color="#46DDE7F2" />
+        <SolidColorBrush x:Key="ThemeCardBgBrush" Color="#A6111827" />
+        <!-- Legacy aliases for backward compat -->
         <SolidColorBrush x:Key="PanelBrush" Color="#132234" />
         <SolidColorBrush x:Key="PanelBorderBrush" Color="#27445C" />
         <SolidColorBrush x:Key="PanelForegroundBrush" Color="#E2E8F0" />
@@ -27,9 +64,9 @@
 
         <!-- ==================== TextBox ==================== -->
         <Style Selector="TextBox">
-            <Setter Property="Foreground" Value="#E2E8F0" />
-            <Setter Property="Background" Value="#132234" />
-            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgBaseBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderDefaultBrush}" />
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="MinHeight" Value="24" />
             <Setter Property="FontSize" Value="13" />
@@ -43,7 +80,7 @@
                             Padding="{TemplateBinding Padding}">
                         <Panel>
                             <TextBlock x:Name="PART_Watermark"
-                                       Foreground="#4A6A88"
+                                       Foreground="{DynamicResource ThemeTextDimBrush}"
                                        VerticalAlignment="Center"
                                        IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        Text="{TemplateBinding Watermark}" />
@@ -64,28 +101,28 @@
             </Setter>
         </Style>
         <Style Selector="TextBox:focus /template/ Border#Bd">
-            <Setter Property="BorderBrush" Value="#3B82F6" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
         </Style>
         <Style Selector="TextBox:pointerover /template/ Border#Bd">
-            <Setter Property="BorderBrush" Value="#33536D" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderLightBrush}" />
         </Style>
 
         <!-- ==================== CheckBox ==================== -->
         <Style Selector="CheckBox">
-            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
 
         <!-- ==================== ContextMenu ==================== -->
         <Style Selector="ContextMenu">
-            <Setter Property="Background" Value="#0F1A2A" />
-            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgDeepBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Template">
                 <ControlTemplate TargetType="ContextMenu">
                     <Border x:Name="MenuBorder"
                             Background="{TemplateBinding Background}"
-                            BorderBrush="#33536D"
+                            BorderBrush="{DynamicResource ThemeBorderLightBrush}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Padding="4">
@@ -99,7 +136,7 @@
         <Style Selector="Separator">
             <Setter Property="Height" Value="1" />
             <Setter Property="Margin" Value="4,2" />
-            <Setter Property="Background" Value="#22374D" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderSubtleBrush}" />
             <Setter Property="Template">
                 <ControlTemplate TargetType="Separator">
                     <Border Background="{TemplateBinding Background}"
@@ -110,16 +147,16 @@
 
         <!-- ==================== MenuItem shared hover/checked ==================== -->
         <Style Selector="MenuItem:pointerover /template/ Border#Bd">
-            <Setter Property="Background" Value="#1C3650" />
+            <Setter Property="Background" Value="{DynamicResource ThemeHoverBgBrush}" />
         </Style>
         <Style Selector="MenuItem:checked /template/ Border#Bd">
-            <Setter Property="Background" Value="#152A40" />
+            <Setter Property="Background" Value="{DynamicResource ThemeCheckedBgBrush}" />
         </Style>
 
         <!-- ==================== MenuItem (implicit) ==================== -->
         <Style Selector="MenuItem">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Template">
                 <ControlTemplate TargetType="MenuItem">
@@ -136,7 +173,7 @@
                             <Path x:Name="CheckMark"
                                   Grid.Column="0"
                                   Data="M 0,5 L 3,9 L 9,1"
-                                  Stroke="#67A6FF"
+                                  Stroke="{DynamicResource ThemeAccentBrightBrush}"
                                   StrokeThickness="2"
                                   IsVisible="{TemplateBinding IsChecked}"
                                   VerticalAlignment="Center"
@@ -148,15 +185,15 @@
                             <Path x:Name="Arrow"
                                   Grid.Column="2"
                                   Data="M 0 0 L 4 4 L 8 0 Z"
-                                  Fill="#94A3B8"
+                                  Fill="{DynamicResource ThemeTextSecondaryBrush}"
                                   VerticalAlignment="Center"
                                   Margin="8,0,0,0"
                                   IsVisible="False" />
                             <Popup x:Name="PART_Popup"
                                    Placement="Right"
                                    IsOpen="{TemplateBinding IsSubMenuOpen}">
-                                <Border Background="#0F1A2A"
-                                        BorderBrush="#33536D"
+                                <Border Background="{DynamicResource ThemeBgDeepBrush}"
+                                        BorderBrush="{DynamicResource ThemeBorderLightBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
                                         Padding="4">
@@ -232,7 +269,7 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#3B5575" CornerRadius="4" />
+                                            <Border Background="{DynamicResource ThemeScrollbarBrush}" CornerRadius="4" />
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
@@ -253,7 +290,7 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#3B5575" CornerRadius="4" />
+                                            <Border Background="{DynamicResource ThemeScrollbarBrush}" CornerRadius="4" />
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
@@ -271,7 +308,7 @@
         <ControlTheme x:Key="DarkSeparatorStyle" TargetType="Separator">
             <Setter Property="Height" Value="1" />
             <Setter Property="Margin" Value="4,3" />
-            <Setter Property="Background" Value="#22374D" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderSubtleBrush}" />
             <Setter Property="Template">
                 <ControlTemplate TargetType="Separator">
                     <Border Background="{TemplateBinding Background}"
@@ -282,7 +319,7 @@
 
         <ControlTheme x:Key="DarkMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Template">
                 <ControlTemplate TargetType="MenuItem">
@@ -299,7 +336,7 @@
                             <Path x:Name="CheckMark"
                                   Grid.Column="0"
                                   Data="M 0,5 L 3,9 L 9,1"
-                                  Stroke="#67A6FF"
+                                  Stroke="{DynamicResource ThemeAccentBrightBrush}"
                                   StrokeThickness="2"
                                   IsVisible="{TemplateBinding IsChecked}"
                                   VerticalAlignment="Center"
@@ -311,14 +348,14 @@
                             <Path x:Name="Arrow"
                                   Grid.Column="2"
                                   Data="M 0 0 L 4 4 L 8 0 Z"
-                                  Fill="#94A3B8"
+                                  Fill="{DynamicResource ThemeTextSecondaryBrush}"
                                   VerticalAlignment="Center"
                                   Margin="8,0,0,0" />
                             <Popup x:Name="PART_Popup"
                                    Placement="Right"
                                    IsOpen="{TemplateBinding IsSubMenuOpen}">
-                                <Border Background="#0F1A2A"
-                                        BorderBrush="#33536D"
+                                <Border Background="{DynamicResource ThemeBgDeepBrush}"
+                                        BorderBrush="{DynamicResource ThemeBorderLightBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
                                         Padding="4">
@@ -334,7 +371,7 @@
         <ControlTheme x:Key="TabButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="10,5" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
@@ -354,17 +391,17 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="#1C3650" />
+                <Setter Property="Background" Value="{DynamicResource ThemeHoverBgBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="#214867" />
+                <Setter Property="Background" Value="{DynamicResource ThemePressedBgBrush}" />
             </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="TabHeaderButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="10,2" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
@@ -385,18 +422,18 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="#1C3650" />
+                <Setter Property="Background" Value="{DynamicResource ThemeHoverBgBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="#214867" />
+                <Setter Property="Background" Value="{DynamicResource ThemePressedBgBrush}" />
             </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="ToolbarButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="10,5" />
-            <Setter Property="Background" Value="#132234" />
-            <Setter Property="Foreground" Value="#E2E8F0" />
-            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgBaseBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderDefaultBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
@@ -417,18 +454,18 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="#1C3650" />
+                <Setter Property="Background" Value="{DynamicResource ThemeHoverBgBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="#214867" />
+                <Setter Property="Background" Value="{DynamicResource ThemePressedBgBrush}" />
             </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="GhostButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="30" />
-            <Setter Property="Foreground" Value="#E2E8F0" />
-            <Setter Property="Background" Value="#132234" />
-            <Setter Property="BorderBrush" Value="#27445C" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextContentBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgBaseBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderDefaultBrush}" />
             <Setter Property="Padding" Value="10,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -451,17 +488,17 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="#1C3650" />
+                <Setter Property="Background" Value="{DynamicResource ThemeHoverBgBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="#214867" />
+                <Setter Property="Background" Value="{DynamicResource ThemePressedBgBrush}" />
             </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="30" />
-            <Setter Property="Background" Value="#2563EB" />
-            <Setter Property="BorderBrush" Value="#2563EB" />
+            <Setter Property="Background" Value="{DynamicResource ThemeAccentDeepBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentDeepBrush}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="Padding" Value="10,0" />
             <Setter Property="FontSize" Value="12" />
@@ -485,10 +522,10 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="#3B82F6" />
+                <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="#1D4ED8" />
+                <Setter Property="Background" Value="{DynamicResource ThemeAccentPressedBrush}" />
             </Style>
         </ControlTheme>
 

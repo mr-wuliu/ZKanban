@@ -19,7 +19,7 @@ public partial class MainWindow : Window
     private const double ChartHeight = 124;
     private const double ChartTop = 0;
 
-    private static readonly string[] Palette = ["#67A6FF", "#FF9D4B", "#60E6B2", "#D38FFF", "#FFD166", "#7DD3FC"];
+    private string[] Palette => ThemeManager.Current.Palette;
 
     private readonly ObservableCollection<ChartSeriesViewModel> _chartSeries = [];
     private readonly ObservableCollection<ChartAxisLabelViewModel> _axisLabels = [];
@@ -164,14 +164,14 @@ public partial class MainWindow : Window
 
     private void UpdateRangeButtons(string mode)
     {
-        TodayRangeButton.Foreground = mode == "1" ? Brushes.White : CreateBrush("#94A3B8");
-        TodayRangeButton.Background = mode == "1" ? CreateBrush("#1C3650") : Brushes.Transparent;
-        WeekRangeButton.Foreground = mode == "7" ? Brushes.White : CreateBrush("#94A3B8");
-        WeekRangeButton.Background = mode == "7" ? CreateBrush("#1C3650") : Brushes.Transparent;
-        MonthRangeButton.Foreground = mode == "30" ? Brushes.White : CreateBrush("#94A3B8");
-        MonthRangeButton.Background = mode == "30" ? CreateBrush("#1C3650") : Brushes.Transparent;
-        Month60RangeButton.Foreground = mode == "60" ? Brushes.White : CreateBrush("#94A3B8");
-        Month60RangeButton.Background = mode == "60" ? CreateBrush("#1C3650") : Brushes.Transparent;
+        TodayRangeButton.Foreground = mode == "1" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
+        TodayRangeButton.Background = mode == "1" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.HoverBg)) : Brushes.Transparent;
+        WeekRangeButton.Foreground = mode == "7" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
+        WeekRangeButton.Background = mode == "7" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.HoverBg)) : Brushes.Transparent;
+        MonthRangeButton.Foreground = mode == "30" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
+        MonthRangeButton.Background = mode == "30" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.HoverBg)) : Brushes.Transparent;
+        Month60RangeButton.Foreground = mode == "60" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
+        Month60RangeButton.Background = mode == "60" ? new SolidColorBrush(Color.Parse(ThemeManager.Current.HoverBg)) : Brushes.Transparent;
     }
 
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
@@ -524,7 +524,7 @@ public partial class MainWindow : Window
             var line = new Polyline
             {
                 Points = [new Point(38, y), new Point(gridRight, y)],
-                Stroke = new SolidColorBrush(Color.Parse("#2A3E54")),
+                Stroke = new SolidColorBrush(Color.Parse(ThemeManager.Current.GridLine)),
                 StrokeThickness = 1,
                 StrokeDashArray = [2, 3],
             };
@@ -534,7 +534,7 @@ public partial class MainWindow : Window
             var label = new TextBlock
             {
                 Text = FormatYAxis(maxValue * ratio),
-                Foreground = new SolidColorBrush(Color.Parse("#A8B8CC")),
+                Foreground = new SolidColorBrush(Color.Parse(ThemeManager.Current.TextMuted)),
                 FontSize = 10,
                 [Canvas.LeftProperty] = 0.0,
                 [Canvas.TopProperty] = y,
@@ -645,8 +645,8 @@ public partial class MainWindow : Window
             Position = new PixelPoint(x, y);
         });
 
-        ChartModeIcon.Stroke = _isChartMode ? Brushes.White : CreateBrush("#7B92A8");
-        SummaryModeIcon.Stroke = !_isChartMode ? Brushes.White : CreateBrush("#7B92A8");
+        ChartModeIcon.Stroke = _isChartMode ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
+        SummaryModeIcon.Stroke = !_isChartMode ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
     }
 
     private void ApplyCollapsedState()
@@ -775,9 +775,22 @@ public partial class MainWindow : Window
         UpdateTopmostIcon();
     }
 
+    private async void ThemeMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem || menuItem.Tag is not string themeName)
+            return;
+
+        _settings.Theme = themeName;
+        ThemeManager.ApplyTheme(themeName);
+        await _settingsService.SaveAsync(_settings);
+        ApplyPersistedRange();
+        RenderChart();
+        UpdatePanels();
+    }
+
     private void UpdateTopmostIcon()
     {
-        var brush = Topmost ? CreateBrush("#F8FAFC") : CreateBrush("#94A3B8");
+        var brush = Topmost ? new SolidColorBrush(Color.Parse(ThemeManager.Current.TextPrimary)) : new SolidColorBrush(Color.Parse(ThemeManager.Current.TextSecondary));
         TopmostPinHead.Stroke = brush;
         TopmostPinBody.Background = brush;
     }
@@ -847,7 +860,7 @@ public partial class MainWindow : Window
                 Height = 7,
                 Stroke = stroke,
                 StrokeThickness = 2,
-                Fill = new SolidColorBrush(Color.Parse("#0F1A2A")),
+                Fill = new SolidColorBrush(Color.Parse(ThemeManager.Current.BgDeep)),
                 [Canvas.LeftProperty] = px - 3.5,
                 [Canvas.TopProperty] = py - 3.5,
             };
