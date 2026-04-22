@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private readonly UsageHistoryService _historyService = new();
     private readonly List<Control> _gridLineVisuals = [];
     private readonly List<Control> _trackDotVisuals = [];
+    private readonly HashSet<int> _refreshedRanges = [];
 
     private CredentialSettings _settings = CredentialSettings.CreateDefault();
     private UsageSnapshot? _currentSnapshot;
@@ -207,6 +208,7 @@ public partial class MainWindow : Window
                 {
                     // Update today's daily total in history
                     UpdateHistoryFromSnapshot(todayDate, todaySnapshot);
+                    _historyService.MarkVerified(todayDate);
 
                     // Step 2: Backfill gaps for multi-day views
                     if (rangeDays > 1)
@@ -221,6 +223,7 @@ public partial class MainWindow : Window
                             foreach (var (date, models) in records)
                             {
                                 _historyService.UpdateDay(date, models);
+                                _historyService.MarkVerified(date);
                             }
                         }
                     }
@@ -242,6 +245,40 @@ public partial class MainWindow : Window
                 }
 
                 RebuildUi();
+
+                // Step 4: Async refresh stale historical data (once per range per session)
+                if (!_refreshedRanges.Contains(rangeDays) && rangeDays > 1 && todaySnapshot.IsLoggedIn)
+                {
+                    _refreshedRanges.Add(rangeDays);
+                    var historyStart = todayDate.AddDays(-(rangeDays - 1));
+                    var yesterday = todayDate.AddDays(-1);
+                    var staleDays = _historyService.FindDaysNeedingRefresh(historyStart, yesterday);
+
+                    if (staleDays.Count > 0)
+                    {
+                        try
+                        {
+                            var gapStart = staleDays.Min();
+                            var gapEnd = staleDays.Max();
+                            var freshRecords = await _automationService.FetchDailyUsageRecordsAsync(
+                                HiddenWebView, _settings, gapStart, gapEnd, CancellationToken.None);
+
+                            foreach (var (date, models) in freshRecords)
+                            {
+                                _historyService.UpdateDay(date, models);
+                                _historyService.MarkVerified(date);
+                            }
+
+                            _historyService.SaveToDisk();
+                            _currentSnapshot = BuildMergedSnapshot(historyStart, todayDate, todaySnapshot, rangeDays);
+                            RebuildUi();
+                        }
+                        catch
+                        {
+                            // Non-critical: initial cached display is still shown
+                        }
+                    }
+                }
             } while (_hasPendingRefresh);
         }
         finally

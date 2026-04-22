@@ -1,4 +1,4 @@
-using System.IO;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -171,6 +171,61 @@ public sealed class UsageHistoryService
     /// </summary>
     public int Count => _records.Count;
 
+    /// <summary>
+    /// Marks a day's data as verified (freshly confirmed against the API).
+    /// </summary>
+    public void MarkVerified(DateOnly date)
+    {
+        if (_records.TryGetValue(date, out var record))
+        {
+            record.LastVerified = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture);
+        }
+    }
+
+    /// <summary>
+    /// Returns dates within [start, end] that should be refreshed from the API.
+    /// <list type="bullet">
+    ///   <item>Days older than 3 days that have been verified are "final" — skipped.</item>
+    ///   <item>Recent days (≤ 3 days ago) are skipped only if verified within the last 6 hours.</item>
+    ///   <item>Missing days are always included.</item>
+    /// </list>
+    /// </summary>
+    public IReadOnlyList<DateOnly> FindDaysNeedingRefresh(DateOnly start, DateOnly end)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var now = DateTimeOffset.Now;
+        var result = new List<DateOnly>();
+
+        for (var d = start; d <= end; d = d.AddDays(1))
+        {
+            var daysAgo = today.DayNumber - d.DayNumber;
+
+            if (daysAgo > 3)
+            {
+                // Old days: skip if already verified at least once
+                if (_records.TryGetValue(d, out var oldRecord) && !string.IsNullOrEmpty(oldRecord.LastVerified))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                // Recent days: skip if verified within the last 6 hours
+                if (_records.TryGetValue(d, out var recentRecord) &&
+                    !string.IsNullOrEmpty(recentRecord.LastVerified) &&
+                    DateTimeOffset.TryParse(recentRecord.LastVerified, out var verifiedAt) &&
+                    now - verifiedAt < TimeSpan.FromHours(6))
+                {
+                    continue;
+                }
+            }
+
+            result.Add(d);
+        }
+
+        return result;
+    }
+
     private static string GetFilePath(DateOnly date) =>
         Path.Combine(HistoryFolder, $"{date:yyyy-MM-dd}.json");
 }
@@ -185,6 +240,13 @@ public sealed class DailyUsageRecord
 
     [JsonPropertyName("models")]
     public List<ModelDailyUsage> Models { get; init; } = [];
+
+    /// <summary>
+    /// ISO 8601 timestamp of when this record was last verified against the API.
+    /// Null means never verified (treated as stale).
+    /// </summary>
+    [JsonPropertyName("lastVerified")]
+    public string? LastVerified { get; set; }
 }
 
 /// <summary>
