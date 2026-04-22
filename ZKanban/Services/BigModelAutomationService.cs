@@ -107,7 +107,10 @@ public sealed class BigModelAutomationService
             return [];
         }
 
-        var records = new List<(DateOnly Date, List<ModelDailyUsage> Models)>();
+        // The API may return hourly or daily granularity depending on the range.
+        // Group by date and sum token values so we always get daily totals.
+        var dailySums = new Dictionary<DateOnly, Dictionary<string, double>>();
+        var modelOrder = new List<string>();
 
         for (var i = 0; i < usageResult.Data.XTime.Count; i++)
         {
@@ -117,7 +120,12 @@ public sealed class BigModelAutomationService
             }
 
             var date = DateOnly.FromDateTime(time);
-            var models = new List<ModelDailyUsage>();
+
+            if (!dailySums.TryGetValue(date, out var dateModels))
+            {
+                dateModels = new Dictionary<string, double>();
+                dailySums[date] = dateModels;
+            }
 
             foreach (var item in usageResult.Data.ModelDataList)
             {
@@ -130,14 +138,31 @@ public sealed class BigModelAutomationService
                     ? item.TokensUsage[i]
                     : 0d;
 
-                models.Add(new ModelDailyUsage
+                var name = item.ModelName.Trim();
+                if (dateModels.TryAdd(name, tokens))
                 {
-                    Name = item.ModelName.Trim(),
-                    Tokens = tokens,
-                });
+                    if (!modelOrder.Contains(name))
+                    {
+                        modelOrder.Add(name);
+                    }
+                }
+                else
+                {
+                    dateModels[name] += tokens;
+                }
             }
+        }
 
-            records.Add((date, models));
+        var records = new List<(DateOnly Date, List<ModelDailyUsage> Models)>();
+        foreach (var (date, models) in dailySums.OrderBy(kv => kv.Key))
+        {
+            records.Add((date, modelOrder
+                .Where(name => models.ContainsKey(name))
+                .Select(name => new ModelDailyUsage
+                {
+                    Name = name,
+                    Tokens = models[name],
+                }).ToList()));
         }
 
         return records;
